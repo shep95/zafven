@@ -99,7 +99,7 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 | `/cipher` (mod) · `/solve <answer>` | Cipher-puzzle events — first to solve wins |
 | *(daily/weekly)* | A **transit + koan** posts to `#oracle` daily; a weekly **egregore digest** on Mondays |
 | `/kick_inactive [days] [dry_run] [message]` | Preview/remove inactive members + reinvite DM (**dry-run by default**, admin-gated) |
-| *(chat)* | **@mention or reply to Zafven** and she talks back — in character (she/her), jokes, banter, moods |
+| *(chat)* | **@mention or reply to Zafven** and she talks back — in character (she/her), jokes, banter, moods. She **remembers** what you tell her (`/memory`, `/forget`) |
 | *(automatic)* | **Welcome card**, leave log, deleted-message log, curse-word censor, anti-spam/scam, **anti-cyberbullying** |
 
 ## Moderation: welcome, anti-spam, profanity

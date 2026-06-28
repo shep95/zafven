@@ -1,23 +1,37 @@
-"""Zafven's live chat personality — she replies when @mentioned or replied to.
+"""Zafven's live chat personality — she replies, banters, and remembers.
 
-Keeps it natural: pulls the recent channel context, answers in character via the
-companion brain, and threads the reply. Cooldown per channel to avoid spam/cost.
-Ambient (unprompted) replies are off by default (CHAT_AMBIENT_CHANCE=0).
+She replies when @mentioned or replied to, pulls recent channel context, and
+recalls what each user has told her before (consensual memory — see chat_memory).
+After replying she may emit a hidden [[remember: …]] note, which is stripped from
+chat and stored. Users control their own memory via /memory and /forget.
 """
 from __future__ import annotations
 
 import logging
 import random
+import re
 import time
 
 import discord
+from discord import app_commands
 from discord.ext import commands
 
 import config
+from core import chat_memory
 from core.brain_loader import load as load_brain
 from core.model_gateway import GatewayError
 
 log = logging.getLogger("zafven.chat")
+
+REMEMBER_RE = re.compile(r"\[\[remember:\s*(.+?)\]\]", re.IGNORECASE | re.DOTALL)
+
+MEMORY_INSTRUCTION = (
+    "\n\nMEMORY: If this person shares something durable worth remembering (their name, "
+    "preferences, ongoing projects, how they're doing), end your message with a hidden tag on "
+    "its own line: [[remember: one short note]]. Only when genuinely useful — it's hidden from "
+    "chat. Use what you already remember to be personal. NEVER store or reveal private info about "
+    "anyone other than the person you're talking to."
+)
 
 
 class ChatCog(commands.Cog):
@@ -25,8 +39,12 @@ class ChatCog(commands.Cog):
         self.bot = bot
         self._cooldown: dict[int, float] = {}
 
-    def _system(self) -> str:
-        return load_brain("companion")
+    def _system(self, display_name: str, notes: list[str]) -> str:
+        base = load_brain("companion")
+        if notes:
+            base += (f"\n\nWhat you remember about {display_name} (from past chats with you):\n"
+                     + "\n".join(f"- {n}" for n in notes))
+        return base + MEMORY_INSTRUCTION
 
     def _is_reply_to_me(self, message: discord.Message) -> bool:
         ref = message.reference
@@ -53,25 +71,39 @@ class ChatCog(commands.Cog):
             return
         self._cooldown[message.channel.id] = now
 
-        perms = message.channel.permissions_for(message.guild.me)
-        if not perms.send_messages:
+        if not message.channel.permissions_for(message.guild.me).send_messages:
             return
+
+        try:
+            notes = await chat_memory.get_notes(message.guild, message.author.id)
+        except Exception:  # noqa: BLE001 — memory must never break chat
+            notes = []
 
         try:
             async with message.channel.typing():
                 transcript = await self._context(message)
-                reply = await self.bot.gateway.narrate(  # type: ignore[attr-defined]
-                    self._system(), transcript, web_search=False, max_tokens=300)
+                raw = await self.bot.gateway.narrate(  # type: ignore[attr-defined]
+                    self._system(message.author.display_name, notes), transcript,
+                    web_search=False, max_tokens=320)
         except GatewayError as exc:
             log.warning("chat reply failed: %s", exc)
             return
 
+        remembered = REMEMBER_RE.findall(raw)
+        visible = REMEMBER_RE.sub("", raw).strip() or "…"
+
         try:
-            await message.reply(reply[:2000], mention_author=False)
+            await message.reply(visible[:2000], mention_author=False)
         except discord.HTTPException:
             try:
-                await message.channel.send(reply[:2000])
+                await message.channel.send(visible[:2000])
             except discord.HTTPException:
+                pass
+
+        for note in remembered:
+            try:
+                await chat_memory.add_note(message.guild, message.author.id, note)
+            except Exception:  # noqa: BLE001
                 pass
 
     async def _context(self, message: discord.Message) -> str:
@@ -89,6 +121,27 @@ class ChatCog(commands.Cog):
         convo = "\n".join(lines)[:8000]
         return (f"This is the recent chat in #{message.channel.name}. "
                 f"Reply as Zafven to the last message, in character and in context:\n\n{convo}\n\nZafven:")
+
+    @app_commands.command(name="memory", description="See what Zafven remembers about you.")
+    @app_commands.guild_only()
+    async def memory(self, interaction: discord.Interaction) -> None:
+        notes = await chat_memory.get_notes(interaction.guild, interaction.user.id)
+        if not notes:
+            await interaction.response.send_message(
+                "I don't have any notes on you yet — talk to me a bit!", ephemeral=True)
+            return
+        body = "\n".join(f"• {n}" for n in notes)
+        embed = discord.Embed(title="🧠 What I remember about you", description=body,
+                              color=discord.Color.purple())
+        embed.set_footer(text="Only things you told me in chat. Use /forget to wipe it.")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @app_commands.command(name="forget", description="Make Zafven forget what she remembers about you.")
+    @app_commands.guild_only()
+    async def forget(self, interaction: discord.Interaction) -> None:
+        cleared = await chat_memory.clear(interaction.guild, interaction.user.id)
+        msg = "Done — I've wiped my notes about you. 🧹" if cleared else "I didn't have any notes on you."
+        await interaction.response.send_message(msg, ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:
