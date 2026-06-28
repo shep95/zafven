@@ -23,6 +23,7 @@ def _csv(name: str, default: str) -> list[str]:
 TOKEN: str = os.getenv("DISCORD_TOKEN", "").strip()
 GUILD_ID: int | None = int(os.getenv("GUILD_ID")) if os.getenv("GUILD_ID", "").strip() else None
 MEMBER_LOG_CHANNEL: str = os.getenv("MEMBER_LOG_CHANNEL", "member-log").strip()
+WELCOME_CHANNEL: str = os.getenv("WELCOME_CHANNEL", "welcome").strip()
 PROTECTED_ROLES: list[str] = [r.lower() for r in _csv("PROTECTED_ROLES", "Admin,Moderator,Mod,Booster")]
 DEFAULT_INACTIVE_DAYS: int = _int("DEFAULT_INACTIVE_DAYS", 30)
 ACTIVITY_SCAN_LIMIT: int = _int("ACTIVITY_SCAN_LIMIT", 2000)
@@ -37,6 +38,21 @@ GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
 GEMINI_MAX_TOKENS: int = _int("GEMINI_MAX_TOKENS", 1200)
 GEMINI_TIMEOUT: int = _int("GEMINI_TIMEOUT", 45)
 GEMINI_WEB_SEARCH: str = os.getenv("GEMINI_WEB_SEARCH", "auto").strip().lower()
+
+# ── Anti-spam / anti-scam ────────────────────────────────────────────────
+ANTISPAM_ENABLED: bool = os.getenv("ANTISPAM_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+# Flood: more than N messages within this many seconds = spam.
+ANTISPAM_FLOOD_COUNT: int = _int("ANTISPAM_FLOOD_COUNT", 5)
+ANTISPAM_FLOOD_SECONDS: int = _int("ANTISPAM_FLOOD_SECONDS", 7)
+# Same message repeated this many times = spam.
+ANTISPAM_DUPLICATE_COUNT: int = _int("ANTISPAM_DUPLICATE_COUNT", 3)
+# More than this many @mentions in one message = spam.
+ANTISPAM_MAX_MENTIONS: int = _int("ANTISPAM_MAX_MENTIONS", 5)
+# Delete Discord invite links posted by non-mods.
+ANTISPAM_BLOCK_INVITES: bool = os.getenv("ANTISPAM_BLOCK_INVITES", "true").strip().lower() in {"1", "true", "yes"}
+# Timeout (mute) duration applied to spammers, in seconds (0 = don't timeout).
+ANTISPAM_TIMEOUT_SECONDS: int = _int("ANTISPAM_TIMEOUT_SECONDS", 300)
+ANTISPAM_BYPASS_MODS: bool = os.getenv("ANTISPAM_BYPASS_MODS", "true").strip().lower() in {"1", "true", "yes"}
 
 # ── Profanity filter ─────────────────────────────────────────────────────
 PROFANITY_FILTER_ENABLED: bool = os.getenv("PROFANITY_FILTER_ENABLED", "true").strip().lower() in {"1", "true", "yes"}

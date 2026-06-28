@@ -32,8 +32,9 @@ class HelpCog(commands.Cog):
             name="🛡️ Server management",
             value=("`/kick_inactive [days] [dry_run] [message]` — preview/remove inactive members "
                    "with a reinvite DM (dry-run by default)\n"
-                   "Join/leave events are logged automatically.\n"
-                   "Curse words are auto-censored."),
+                   "New members get a **welcome card**; leaves are logged.\n"
+                   "Curse words are auto-censored; spam/scam (floods, mass-mentions, "
+                   "invite & scam links) is auto-removed."),
             inline=False)
         embed.set_footer(text="Readings are for reflection & entertainment, not advice.")
         await interaction.response.send_message(embed=embed, ephemeral=True)

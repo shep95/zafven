@@ -21,6 +21,14 @@ archetype. This is traditional esoteric correspondence — entertainment, not sc
 Wood (growth, cooperation) · Fire (passion, drive) · Earth (stability, care) ·
 Metal (resolve, structure) · Water (adaptability, depth).
 
+## The three pillars (the bot computes all three from the lunar date)
+- **Year animal + element** ("outer self") — how the world meets you.
+- **Month animal** ("inner self") — your private, emotional engine.
+- **Day animal** ("secret self") — your truest, hidden nature.
+When the three differ, that tension *is* the reading.
+
 ## How to read
-State the animal + element (e.g. "Fire Horse"), give the blended archetype, and a
-light note on the year's compatibility flavour if asked. Keep it playful.
+State the lunar birthday (month/day) and the **Year (element + animal) / Month /
+Day** pillars the bot provides. Blend the element with the year animal, then show
+how the inner (month) and secret (day) animals complicate or complete it. Keep it
+playful. 3-5 short paragraphs.

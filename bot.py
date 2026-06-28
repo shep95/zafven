@@ -31,6 +31,7 @@ INITIAL_COGS = [
     "cogs.logging_cog",
     "cogs.moderation_cog",
     "cogs.profanity_cog",
+    "cogs.antispam_cog",
     "cogs.help_cog",
 ]
 

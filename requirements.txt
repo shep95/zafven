@@ -2,5 +2,7 @@ discord.py>=2.4.0
 python-dotenv>=1.0.0
 # Vedic astrology computations (Swiss Ephemeris).
 pyswisseph>=2.10.3.2
+# Gregorian <-> Chinese lunisolar calendar (zodiac + lunar birthday).
+lunardate>=0.2.2
 # aiohttp ships with discord.py and powers the Gemini gateway — pinned for clarity.
 aiohttp>=3.9.0

@@ -81,16 +81,27 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 | Command | What it does |
 |---|---|
 | `/vedic <birth_date> [time] [lat] [lon]` | Sidereal reading — Moon sign, nakshatra, ascendant |
-| `/numerology <full_name> <birth_date>` | Life path, expression, soul urge, personality, birthday |
-| `/zodiac <birth_date>` | Chinese animal + element archetype |
+| `/numerology <full_name> <birth_date>` | Full reading on **both** solar & Chinese-lunar birthday — driver, life path, month, year, expression, soul urge, personality, maturity + planet rulers |
+| `/zodiac <birth_date>` | Chinese zodiac — **year + month + day** animals from your lunar birthday |
 | `/predict <birth_date> [focus] [chart_image]` | Astrological **outlook** — uses Gemini **Google Search** for current transits and **vision** to read an uploaded chart |
 | `/vibe [share]` | Playful read of **your own** chat style (self-only, opt-in) |
 | `/imagine <image> [question]` | Gemini-vision **describe & interpret** an uploaded image (no people-ID, no geolocation) |
 | `/audit <file>` | Upload code or a **.zip** → narrative security + quality audit (logic / workflow / bug / security / supply-chain), then **forge the fixed code on approval** |
 | `/kick_inactive [days] [dry_run] [message]` | Preview/remove inactive members + reinvite DM (**dry-run by default**, admin-gated) |
-| *(automatic)* | Logs joins & leaves to `#member-log`; auto-censors curse words |
+| *(automatic)* | **Welcome card** on join, leave log, curse-word censor, anti-spam/scam |
 
-## Moderation: profanity filter
+## Moderation: welcome, anti-spam, profanity
+
+- **Welcome card** ([`cogs/logging_cog.py`](cogs/logging_cog.py)) — posts a rich
+  embed to `#welcome` on join (username, ID, account age, join time, member #).
+  Leaves are logged to `#member-log`. Both channels auto-create if missing.
+- **Anti-spam / anti-scam** ([`cogs/antispam_cog.py`](cogs/antispam_cog.py)) —
+  auto-removes message floods, repeated messages, mass-mentions, and Discord
+  invite / scam links, and briefly times out the offender. All thresholds are
+  configurable; mods (Manage Messages) are exempt. Needs **Manage Messages** +
+  **Moderate Members**.
+
+### Profanity filter
 
 Curse words are auto-censored by [`cogs/profanity_cog.py`](cogs/profanity_cog.py).
 When a message hits `PROFANITY_THRESHOLD` profane words, the bot deletes it and —
@@ -135,18 +146,19 @@ flowchart LR
 3. **Open the invite link** (replace `YOUR_APP_ID`):
 
    ```
-   https://discord.com/oauth2/authorize?client_id=YOUR_APP_ID&permissions=125971&scope=bot+applications.commands
+   https://discord.com/oauth2/authorize?client_id=YOUR_APP_ID&permissions=1099511753747&scope=bot+applications.commands
    ```
 
-   `permissions=125971` grants exactly what zafven needs:
+   `permissions=1099511753747` grants exactly what zafven needs:
 
    | Permission | Used for |
    |---|---|
    | View Channels · Send Messages · Embed Links · Attach Files | posting readings & audit files |
    | Read Message History | `/vibe`, `/kick_inactive` activity scan |
-   | Manage Messages | the profanity filter (delete + repost) |
+   | Manage Messages | profanity filter + anti-spam (delete) |
+   | Moderate Members | anti-spam timeouts |
    | Kick Members | `/kick_inactive` |
-   | Manage Channels | auto-creating the log channel |
+   | Manage Channels | auto-creating welcome / log channels |
    | Create Instant Invite | the reinvite DM |
 
    *(Or use **OAuth2 → URL Generator**: tick `bot` + `applications.commands`, then
@@ -174,6 +186,10 @@ flowchart LR
 | `PROFANITY_THRESHOLD` | `1` | curse words per message before acting |
 | `PROFANITY_EXTRA_WORDS` | *(blank)* | extra words to censor |
 | `PROFANITY_BYPASS_MODS` | `true` | exempt members with Manage Messages |
+| `ANTISPAM_ENABLED` | `true` | toggle anti-spam/scam |
+| `ANTISPAM_MAX_MENTIONS` | `5` | mentions per message before acting |
+| `ANTISPAM_TIMEOUT_SECONDS` | `300` | how long to mute a spammer (0 = no mute) |
+| `WELCOME_CHANNEL` | `welcome` | channel for the join welcome card |
 | `GUILD_ID` | *(blank)* | restrict commands to one guild for instant sync |
 | `MEMBER_LOG_CHANNEL` | `member-log` | join/leave log channel |
 | `PROTECTED_ROLES` | `Admin,Moderator,Mod,Booster` | never auto-kicked |
