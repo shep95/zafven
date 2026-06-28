@@ -89,6 +89,7 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 | `/imagine <image> [question]` | Gemini-vision **describe & interpret** an uploaded image (no people-ID, no geolocation) |
 | `/synastry <name_a> <date_a> <name_b> <date_b>` | Compatibility reading (numerology + Chinese-zodiac scoring, narrated) |
 | `/tarot [question] [cards]` · `/iching [question]` · `/dream <dream>` | Tarot spread, I Ching cast, symbolic dream reading |
+| `/gematria decode\|date\|resonance <word>` | 5-cipher gematria — Chaldean, elemental signature, soul/personality, trigger numbers, date sync, resonance |
 | `/sigil <intent>` · `/portrait <name> <date>` | **Generated art** — a personal sigil / numerology frequency portrait (PNG) |
 | `/research <topic>` · `/tldr [count]` · `/askdoc <pdf> <q>` | Live web-research briefing · channel summary · ask a PDF |
 | `/audit <file>` | Upload code or a **.zip** → narrative security + quality audit (logic / workflow / bug / security / supply-chain), then **forge the fixed code on approval** |

@@ -29,6 +29,7 @@ class HelpCog(commands.Cog):
             value=("`/tarot [question] [cards]` — tarot spread\n"
                    "`/iching [question]` — cast the I Ching\n"
                    "`/dream <dream>` — symbolic dream reading\n"
+                   "`/gematria decode|date|resonance <word>` — 5-cipher gematria engine\n"
                    "`/sigil <intent>` — forge a personal sigil image\n"
                    "`/portrait <full_name> <birth_date>` — frequency portrait image"),
             inline=False)

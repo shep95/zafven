@@ -32,6 +32,7 @@ INITIAL_COGS = [
     "cogs.divination_cog",
     "cogs.art_cog",
     "cogs.synastry_cog",
+    "cogs.gematria_cog",
     "cogs.tools_cog",
     "cogs.forge_cog",
     "cogs.ranks_cog",
