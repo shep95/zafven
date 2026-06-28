@@ -47,7 +47,8 @@ class HelpCog(commands.Cog):
                    "New members get a **welcome card**; leaves are logged.\n"
                    "**Deleted messages** are logged (who/when/reply) for mods.\n"
                    "Curse words are auto-censored; spam/scam (floods, mass-mentions, "
-                   "invite & scam links) is auto-removed."),
+                   "invite & scam links) is auto-removed.\n"
+                   "**Cyberbullying** is warned once, then muted 30 min if it continues."),
             inline=False)
         embed.set_footer(text="Readings are for reflection & entertainment, not advice.")
         await interaction.response.send_message(embed=embed, ephemeral=True)

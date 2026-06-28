@@ -60,6 +60,14 @@ ANTISPAM_BLOCK_INVITES: bool = os.getenv("ANTISPAM_BLOCK_INVITES", "true").strip
 ANTISPAM_TIMEOUT_SECONDS: int = _int("ANTISPAM_TIMEOUT_SECONDS", 300)
 ANTISPAM_BYPASS_MODS: bool = os.getenv("ANTISPAM_BYPASS_MODS", "true").strip().lower() in {"1", "true", "yes"}
 
+# ── Anti-cyberbullying ───────────────────────────────────────────────────
+HARASS_FILTER_ENABLED: bool = os.getenv("HARASS_FILTER_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+# How long (seconds) to mute a repeat offender. Default 30 minutes.
+HARASS_MUTE_SECONDS: int = _int("HARASS_MUTE_SECONDS", 1800)
+# How long (seconds) a warning stays "active" before it resets.
+HARASS_WARN_WINDOW_SECONDS: int = _int("HARASS_WARN_WINDOW_SECONDS", 3600)
+HARASS_BYPASS_MODS: bool = os.getenv("HARASS_BYPASS_MODS", "true").strip().lower() in {"1", "true", "yes"}
+
 # ── Profanity filter ─────────────────────────────────────────────────────
 PROFANITY_FILTER_ENABLED: bool = os.getenv("PROFANITY_FILTER_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
 # How many curse words in one message before the bot acts. 1 = censor any.

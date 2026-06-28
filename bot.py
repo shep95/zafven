@@ -39,6 +39,7 @@ INITIAL_COGS = [
     "cogs.moderation_cog",
     "cogs.profanity_cog",
     "cogs.antispam_cog",
+    "cogs.antiharass_cog",
     "cogs.help_cog",
 ]
 

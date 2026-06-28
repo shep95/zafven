@@ -94,7 +94,7 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 | `/audit <file>` | Upload code or a **.zip** → narrative security + quality audit (logic / workflow / bug / security / supply-chain), then **forge the fixed code on approval** |
 | `/forge <spec> [language]` | Describe a feature → design narrative → **forge the code on approval** |
 | `/kick_inactive [days] [dry_run] [message]` | Preview/remove inactive members + reinvite DM (**dry-run by default**, admin-gated) |
-| *(automatic)* | **Welcome card** on join, leave log, **deleted-message log**, curse-word censor, anti-spam/scam |
+| *(automatic)* | **Welcome card**, leave log, deleted-message log, curse-word censor, anti-spam/scam, **anti-cyberbullying** |
 
 ## Moderation: welcome, anti-spam, profanity
 
@@ -111,6 +111,11 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
   invite / scam links, and briefly times out the offender. All thresholds are
   configurable; mods (Manage Messages) are exempt. Needs **Manage Messages** +
   **Moderate Members**.
+- **Anti-cyberbullying** ([`cogs/antiharass_cog.py`](cogs/antiharass_cog.py)) —
+  detects targeted insults and self-harm encouragement, deletes the message, and
+  **@mentions the author with one warning**. If they do it again while the
+  warning is active, they're **muted for 30 minutes** (`HARASS_MUTE_SECONDS`).
+  Mods exempt. Needs **Manage Messages** + **Moderate Members**.
 
 ### Profanity filter
 
