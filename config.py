@@ -80,6 +80,21 @@ PROFANITY_EXTRA_WORDS: list[str] = _csv("PROFANITY_EXTRA_WORDS", "")
 PROFANITY_BYPASS_MODS: bool = os.getenv("PROFANITY_BYPASS_MODS", "true").strip().lower() in {"1", "true", "yes"}
 
 
+# ── Phase 2: persistence + scheduled/stateful features ───────────────────
+DATA_CHANNEL: str = os.getenv("DATA_CHANNEL", "zafven-data").strip()
+
+# Initiation ranks (activity XP -> roles)
+RANKS_ENABLED: bool = os.getenv("RANKS_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+RANK_COOLDOWN_SECONDS: int = _int("RANK_COOLDOWN_SECONDS", 60)
+# Role ladder as "RoleName:level" pairs; level = floor(sqrt(xp/100)).
+RANK_LADDER: list[str] = _csv("RANK_LADDER", "Seeker:1,Initiate:3,Adept:6,Mystic:10,Oracle:15")
+
+# Daily broadcast (transit reading + koan) and weekly egregore digest
+DAILY_ENABLED: bool = os.getenv("DAILY_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+DAILY_CHANNEL: str = os.getenv("DAILY_CHANNEL", "oracle").strip()
+DAILY_HOUR_UTC: int = _int("DAILY_HOUR_UTC", 13)
+
+
 def validate() -> list[str]:
     """Return a list of fatal config problems (empty == OK)."""
     problems = []

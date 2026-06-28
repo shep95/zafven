@@ -93,6 +93,11 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 | `/research <topic>` · `/tldr [count]` · `/askdoc <pdf> <q>` | Live web-research briefing · channel summary · ask a PDF |
 | `/audit <file>` | Upload code or a **.zip** → narrative security + quality audit (logic / workflow / bug / security / supply-chain), then **forge the fixed code on approval** |
 | `/forge <spec> [language]` | Describe a feature → design narrative → **forge the code on approval** |
+| `/rank [member]` · `/leaderboard` | Initiation XP & levels — earn roles by chatting |
+| `/capsule <message> <deliver_on> [public]` | **Time capsule** — delivered on a future date |
+| `/mood` | Aggregate read of the server's current vibe (no individuals named) |
+| `/cipher` (mod) · `/solve <answer>` | Cipher-puzzle events — first to solve wins |
+| *(daily/weekly)* | A **transit + koan** posts to `#oracle` daily; a weekly **egregore digest** on Mondays |
 | `/kick_inactive [days] [dry_run] [message]` | Preview/remove inactive members + reinvite DM (**dry-run by default**, admin-gated) |
 | *(automatic)* | **Welcome card**, leave log, deleted-message log, curse-word censor, anti-spam/scam, **anti-cyberbullying** |
 
@@ -208,6 +213,10 @@ flowchart LR
 | `ANTISPAM_TIMEOUT_SECONDS` | `300` | how long to mute a spammer (0 = no mute) |
 | `WELCOME_CHANNEL` | `welcome` | channel for the join welcome card |
 | `DELETED_LOG_CHANNEL` | `message-log` | channel for the deleted-message log |
+| `DATA_CHANNEL` | `zafven-data` | hidden channel used for persistence (XP, capsules, ciphers) |
+| `RANKS_ENABLED` | `true` | toggle initiation XP/ranks |
+| `RANK_LADDER` | `Seeker:1,Initiate:3,…` | `Role:level` ladder for auto-roles |
+| `DAILY_ENABLED` / `DAILY_CHANNEL` / `DAILY_HOUR_UTC` | `true` / `oracle` / `13` | daily broadcast schedule |
 | `PROFILE_OPTOUT_ROLES` | `no-readings` | roles that can't be `/profile`d |
 | `GUILD_ID` | *(blank)* | restrict commands to one guild for instant sync |
 | `MEMBER_LOG_CHANNEL` | `member-log` | join/leave log channel |
@@ -215,6 +224,14 @@ flowchart LR
 | `DEFAULT_INACTIVE_DAYS` | `30` | inactivity threshold |
 | `ACTIVITY_SCAN_LIMIT` | `2000` | messages scanned per channel |
 | `JOIN_GRACE_DAYS` | `7` | new-member exemption |
+
+## Persistence (no database)
+
+State that must survive restarts — XP, time capsules, active ciphers — is stored
+in Discord itself via [`core/store.py`](core/store.py): a hidden `zafven-data`
+channel holds one marker message per namespace with the JSON as a file
+attachment, loaded into memory on first use. Railway's disk is ephemeral, so this
+keeps the "storage lives in Discord" design end-to-end.
 
 ## Scope & ethics
 

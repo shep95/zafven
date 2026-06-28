@@ -41,6 +41,14 @@ class HelpCog(commands.Cog):
                    "`/forge <spec> [language]` — plan a feature, then write the code on approval"),
             inline=False)
         embed.add_field(
+            name="🌌 Community & events",
+            value=("`/rank [member]` · `/leaderboard` — initiation XP & levels (earn roles by chatting)\n"
+                   "`/capsule <message> <deliver_on> [public]` — send a message to the future\n"
+                   "`/mood` — aggregate read of the server's current vibe\n"
+                   "`/cipher` (mod) · `/solve <answer>` — cipher puzzle events\n"
+                   "A **daily transit + koan** posts to #oracle; a weekly egregore digest on Mondays."),
+            inline=False)
+        embed.add_field(
             name="🛡️ Server management",
             value=("`/kick_inactive [days] [dry_run] [message]` — preview/remove inactive members "
                    "with a reinvite DM (dry-run by default)\n"
