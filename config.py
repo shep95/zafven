@@ -60,6 +60,19 @@ ANTISPAM_BLOCK_INVITES: bool = os.getenv("ANTISPAM_BLOCK_INVITES", "true").strip
 ANTISPAM_TIMEOUT_SECONDS: int = _int("ANTISPAM_TIMEOUT_SECONDS", 300)
 ANTISPAM_BYPASS_MODS: bool = os.getenv("ANTISPAM_BYPASS_MODS", "true").strip().lower() in {"1", "true", "yes"}
 
+# ── File / image safety scanning ─────────────────────────────────────────
+FILESCAN_ENABLED: bool = os.getenv("FILESCAN_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+# NSFW image classification via Gemini vision (costs an API call per image).
+NSFW_SCAN_ENABLED: bool = os.getenv("NSFW_SCAN_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+# Don't remove NSFW images in Discord age-gated (NSFW) channels.
+NSFW_ALLOW_IN_NSFW_CHANNELS: bool = os.getenv("NSFW_ALLOW_IN_NSFW_CHANNELS", "true").strip().lower() in {"1", "true", "yes"}
+# Extra blocked file extensions (added to the built-in list).
+BLOCKED_EXTENSIONS: list[str] = _csv("BLOCKED_EXTENSIONS", "")
+# Optional VirusTotal API key for known-malware hash lookups.
+VIRUSTOTAL_API_KEY: str = os.getenv("VIRUSTOTAL_API_KEY", "").strip()
+FILESCAN_MAX_IMAGE_MB: int = _int("FILESCAN_MAX_IMAGE_MB", 8)
+FILESCAN_BYPASS_MODS: bool = os.getenv("FILESCAN_BYPASS_MODS", "false").strip().lower() in {"1", "true", "yes"}
+
 # ── Anti-manipulation / anti-scam tactics ────────────────────────────────
 ANTIMANIP_ENABLED: bool = os.getenv("ANTIMANIP_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
 # Channel where mods get a private alert about flagged messages.

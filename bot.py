@@ -47,6 +47,7 @@ INITIAL_COGS = [
     "cogs.antispam_cog",
     "cogs.antiharass_cog",
     "cogs.antimanip_cog",
+    "cogs.filescan_cog",
     "cogs.help_cog",
 ]
 

@@ -100,7 +100,7 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 | *(daily/weekly)* | A **transit + koan** posts to `#oracle` daily; a weekly **egregore digest** on Mondays |
 | `/kick_inactive [days] [dry_run] [message]` | Preview/remove inactive members + reinvite DM (**dry-run by default**, admin-gated) |
 | *(chat)* | **@mention or reply to Zafven** and she talks back — in character (she/her), jokes, banter, moods. She **remembers** what you tell her (`/memory`, `/forget`) |
-| *(automatic)* | **Welcome card**, leave log, deleted-message log, curse-word censor, anti-spam/scam, anti-cyberbullying, **anti-manipulation tactic callouts** |
+| *(automatic)* | **Welcome card**, leave log, deleted-message log, curse-word censor, anti-spam/scam, anti-cyberbullying, anti-manipulation, **file/image safety scan (NSFW + malware)** |
 
 ## Moderation: welcome, anti-spam, profanity
 
@@ -117,6 +117,12 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
   invite / scam links, and briefly times out the offender. All thresholds are
   configurable; mods (Manage Messages) are exempt. Needs **Manage Messages** +
   **Moderate Members**.
+- **File / image safety scan** ([`cogs/filescan_cog.py`](cogs/filescan_cog.py)) —
+  on every upload: removes **dangerous file types** (exe/scr/jar/apk/…), checks
+  files against **VirusTotal** by hash if `VIRUSTOTAL_API_KEY` is set (hash only —
+  the file is never uploaded), and classifies **images/GIFs for NSFW** via Gemini
+  vision (removed if explicit; skipped in age-gated NSFW channels). *Discord has
+  no pre-send hook, so this removes within ~1-2s of posting, not before.*
 - **Anti-manipulation tactic callouts** ([`cogs/antimanip_cog.py`](cogs/antimanip_cog.py)) —
   flags known social-engineering **tactics** (phishing, fake account-verification,
   giveaway bait, money-doubler, staff impersonation), removes the message, posts a
