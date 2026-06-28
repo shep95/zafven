@@ -11,7 +11,6 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core import premium
 from core.brain_loader import load as load_brain
 from core.model_gateway import GatewayError
 
@@ -32,7 +31,6 @@ class ImagineCog(commands.Cog):
                           description="Upload an image; zafven describes and interprets it.")
     @app_commands.describe(image="The image to read.",
                            question="Optional: what to focus on (e.g. 'what's the symbolism?').")
-    @premium.premium_only()
     async def imagine(self, interaction: discord.Interaction, image: discord.Attachment,
                       question: str | None = None) -> None:
         if image.size > MAX_IMAGE_BYTES or not (image.content_type or "").startswith("image/"):

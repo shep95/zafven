@@ -13,7 +13,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core import vedic, dates, premium
+from core import vedic, dates
 from core.brain_loader import persona_system_prompt
 from core.model_gateway import GatewayError
 
@@ -32,7 +32,6 @@ class PredictCog(commands.Cog):
         focus="What to focus the outlook on (e.g. general, creativity, relationships).",
         chart_image="Optional: upload a birth-chart image for zafven to read.",
     )
-    @premium.premium_only()
     async def predict(self, interaction: discord.Interaction, birth_date: str,
                       focus: str = "general", chart_image: discord.Attachment | None = None) -> None:
         try:

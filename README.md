@@ -4,7 +4,7 @@
 
 **An esoteric reading engine for Discord.**
 Vedic astrology · numerology · Chinese zodiac · astrological outlook · server management
-Computed in code. Narrated by Gemini. Paywalled. Hosted on Railway.
+Computed in code. Narrated by Gemini. Hosted on Railway.
 
 <sub>Readings are for reflection & entertainment — not financial, medical, legal, or safety advice.</sub>
 
@@ -18,16 +18,13 @@ zafven turns deterministic esoteric math into living, LLM-narrated readings. Eve
 number, sign, and nakshatra is **computed in Python** (Swiss Ephemeris, Pythagorean
 numerology, zodiac tables); the **Gemini LLM** only *phrases* what the code already
 calculated — so it can't hallucinate your chart. A truth-guard layer keeps every
-reading honest and framed as entertainment, and reading commands are **paywalled**
-behind a premium role or a Discord subscription.
+reading honest and framed as entertainment.
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    U[User runs a slash command] --> PAY{Premium check}
-    PAY -->|no access| UP[🔒 Upsell / subscribe button]
-    PAY -->|has access| C{Cog}
+    U[User runs a slash command] --> C{Cog}
     C --> CORE["Deterministic core<br/>(Swiss Ephemeris · numerology · zodiac · vibe stats)"]
     CORE --> FACTS[Computed facts]
     BL["Brain loader<br/>(one domain at a time)"] --> SP[System prompt]
@@ -53,7 +50,6 @@ sequenceDiagram
     participant Gemini
     User->>Discord: /vedic 1995-08-23 14:30 28.61 77.21
     Discord->>Cog: interaction
-    Cog->>Cog: premium check (role / subscription / admin)
     Cog->>Core: compute_chart(date, time, lat, lon)
     Core-->>Cog: Moon sign, nakshatra, ascendant
     Cog->>Brain: persona + anti-spiral + vedic
@@ -82,34 +78,27 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 
 ## Commands
 
-🔒 = premium-only (paywalled).
-
 | Command | What it does |
 |---|---|
-| 🔒 `/vedic <birth_date> [time] [lat] [lon]` | Sidereal reading — Moon sign, nakshatra, ascendant |
-| 🔒 `/numerology <full_name> <birth_date>` | Life path, expression, soul urge, personality, birthday |
-| 🔒 `/zodiac <birth_date>` | Chinese animal + element archetype |
-| 🔒 `/predict <birth_date> [focus] [chart_image]` | Astrological **outlook** — uses Gemini **Google Search** for current transits and **vision** to read an uploaded chart |
-| 🔒 `/vibe [share]` | Playful read of **your own** chat style (self-only, opt-in) |
-| 🔒 `/imagine <image> [question]` | Gemini-vision **describe & interpret** an uploaded image (no people-ID, no geolocation) |
-| 🔒 `/audit <file>` | Upload code or a **.zip** → narrative security + quality audit (logic / workflow / bug / security / supply-chain), then **forge the fixed code on approval** |
+| `/vedic <birth_date> [time] [lat] [lon]` | Sidereal reading — Moon sign, nakshatra, ascendant |
+| `/numerology <full_name> <birth_date>` | Life path, expression, soul urge, personality, birthday |
+| `/zodiac <birth_date>` | Chinese animal + element archetype |
+| `/predict <birth_date> [focus] [chart_image]` | Astrological **outlook** — uses Gemini **Google Search** for current transits and **vision** to read an uploaded chart |
+| `/vibe [share]` | Playful read of **your own** chat style (self-only, opt-in) |
+| `/imagine <image> [question]` | Gemini-vision **describe & interpret** an uploaded image (no people-ID, no geolocation) |
+| `/audit <file>` | Upload code or a **.zip** → narrative security + quality audit (logic / workflow / bug / security / supply-chain), then **forge the fixed code on approval** |
 | `/kick_inactive [days] [dry_run] [message]` | Preview/remove inactive members + reinvite DM (**dry-run by default**, admin-gated) |
-| *(automatic)* | Logs joins & leaves to `#member-log` |
+| *(automatic)* | Logs joins & leaves to `#member-log`; auto-censors curse words |
 
-## The paywall
+## Moderation: profanity filter
 
-Reading commands are gated by [`core/premium.py`](core/premium.py). A member gets
-access if **any** of these holds:
-
-1. they have a **premium role** (`PREMIUM_ROLES`, default `Premium`) — assign it
-   after payment via Patreon/Ko-fi/whatever you use;
-2. they hold a valid **Discord app-subscription** entitlement (`PREMIUM_SKU_ID`,
-   Discord's native monetization — shows a built-in *Subscribe* button);
-3. they're an **admin / guild owner** and `PREMIUM_BYPASS_ADMIN` is on (for testing).
-
-Non-subscribers get an ephemeral upsell with a subscribe button (`SUBSCRIBE_URL`
-link and/or the native premium button when a SKU is set). Server-management
-commands stay admin-gated, not paywalled.
+Curse words are auto-censored by [`cogs/profanity_cog.py`](cogs/profanity_cog.py).
+When a message hits `PROFANITY_THRESHOLD` profane words, the bot deletes it and —
+with `PROFANITY_ACTION=censor` — reposts a starred version
+(`🔇 **Name:** what the f*** s***`). Set `PROFANITY_ACTION=delete` to just remove
+it with a brief warning. Members with **Manage Messages** are exempt by default,
+and you can extend the word list via `PROFANITY_EXTRA_WORDS`. Needs the bot to
+have **Manage Messages**.
 
 ## Quick start (local)
 
@@ -145,10 +134,11 @@ flowchart LR
 | `GEMINI_API_KEY` | — | **Required.** Google Gemini API key |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | multimodal model for readings + vision |
 | `GEMINI_WEB_SEARCH` | `auto` | `auto` / `on` / `off` for `/predict` grounding |
-| `PREMIUM_ROLES` | `Premium` | roles that unlock paywalled commands |
-| `PREMIUM_SKU_ID` | *(blank)* | Discord monetization SKU for native subscriptions |
-| `PREMIUM_BYPASS_ADMIN` | `true` | admins/owner skip the paywall |
-| `SUBSCRIBE_URL` | *(blank)* | external subscribe link on the upsell |
+| `PROFANITY_FILTER_ENABLED` | `true` | toggle the curse-word filter |
+| `PROFANITY_ACTION` | `censor` | `censor` (repost starred) or `delete` |
+| `PROFANITY_THRESHOLD` | `1` | curse words per message before acting |
+| `PROFANITY_EXTRA_WORDS` | *(blank)* | extra words to censor |
+| `PROFANITY_BYPASS_MODS` | `true` | exempt members with Manage Messages |
 | `GUILD_ID` | *(blank)* | restrict commands to one guild for instant sync |
 | `MEMBER_LOG_CHANNEL` | `member-log` | join/leave log channel |
 | `PROTECTED_ROLES` | `Admin,Moderator,Mod,Booster` | never auto-kicked |

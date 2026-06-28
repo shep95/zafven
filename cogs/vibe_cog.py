@@ -7,7 +7,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core import vibe, premium
+from core import vibe
 from core.brain_loader import persona_system_prompt
 from core.model_gateway import GatewayError
 
@@ -24,7 +24,6 @@ class VibeCog(commands.Cog):
     @app_commands.command(name="vibe", description="A playful read of your own chat style. Just for fun.")
     @app_commands.describe(share="Post publicly instead of just to you. Default False.")
     @app_commands.guild_only()
-    @premium.premium_only()
     async def vibe(self, interaction: discord.Interaction, share: bool = False) -> None:
         await interaction.response.defer(ephemeral=not share, thinking=True)
         guild = interaction.guild

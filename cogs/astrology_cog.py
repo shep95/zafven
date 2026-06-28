@@ -7,7 +7,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core import vedic, dates, premium
+from core import vedic, dates
 from core.brain_loader import persona_system_prompt
 from core.model_gateway import GatewayError
 
@@ -25,7 +25,6 @@ class AstrologyCog(commands.Cog):
         latitude="Optional birth latitude (decimal), e.g. 28.61",
         longitude="Optional birth longitude (decimal), e.g. 77.21",
     )
-    @premium.premium_only()
     async def vedic(self, interaction: discord.Interaction, birth_date: str,
                     birth_time: str | None = None, latitude: float | None = None,
                     longitude: float | None = None) -> None:

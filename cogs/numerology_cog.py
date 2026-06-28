@@ -7,7 +7,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core import numerology, dates, premium
+from core import numerology, dates
 from core.brain_loader import persona_system_prompt
 from core.model_gateway import GatewayError
 
@@ -20,7 +20,6 @@ class NumerologyCog(commands.Cog):
 
     @app_commands.command(name="numerology", description="A numerology reading from your name and birth date.")
     @app_commands.describe(full_name="Your full birth name", birth_date="e.g. 1995-08-23")
-    @premium.premium_only()
     async def numerology(self, interaction: discord.Interaction, full_name: str, birth_date: str) -> None:
         try:
             bdate = dates.parse_date(birth_date)

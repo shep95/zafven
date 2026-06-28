@@ -14,7 +14,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core import code_intake, premium
+from core import code_intake
 from core.brain_loader import load as load_brain
 from core.model_gateway import GatewayError
 
@@ -49,10 +49,6 @@ class ForgeView(discord.ui.View):
         if interaction.user.id != self.author_id:
             await interaction.response.send_message("Only the uploader can forge the fix.", ephemeral=True)
             return False
-        if not premium.has_access(interaction):
-            text, view = premium.build_upsell(interaction)
-            await interaction.response.send_message(text, view=view, ephemeral=True)
-            return False
         return True
 
     @discord.ui.button(label="✅ Forge the fixed code", style=discord.ButtonStyle.success)
@@ -86,7 +82,6 @@ class AuditCog(commands.Cog):
     @app_commands.command(name="audit",
                           description="Upload code or a .zip for a narrative security + quality audit.")
     @app_commands.describe(file="A source file or a .zip of your project.")
-    @premium.premium_only()
     async def audit(self, interaction: discord.Interaction, file: discord.Attachment) -> None:
         if file.size > MAX_UPLOAD_BYTES:
             await interaction.response.send_message("❌ Upload must be under 10 MB.", ephemeral=True)

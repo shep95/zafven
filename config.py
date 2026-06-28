@@ -38,13 +38,16 @@ GEMINI_MAX_TOKENS: int = _int("GEMINI_MAX_TOKENS", 1200)
 GEMINI_TIMEOUT: int = _int("GEMINI_TIMEOUT", 45)
 GEMINI_WEB_SEARCH: str = os.getenv("GEMINI_WEB_SEARCH", "auto").strip().lower()
 
-# ── Paywall / premium gating ─────────────────────────────────────────────
-# Reading commands require ONE of: a configured premium role, a valid Discord
-# app-subscription entitlement (PREMIUM_SKU_ID), or admin bypass.
-PREMIUM_ROLES: list[str] = [r.lower() for r in _csv("PREMIUM_ROLES", "Premium")]
-PREMIUM_SKU_ID: int | None = int(os.getenv("PREMIUM_SKU_ID")) if os.getenv("PREMIUM_SKU_ID", "").strip() else None
-PREMIUM_BYPASS_ADMIN: bool = os.getenv("PREMIUM_BYPASS_ADMIN", "true").strip().lower() in {"1", "true", "yes"}
-SUBSCRIBE_URL: str = os.getenv("SUBSCRIBE_URL", "").strip()
+# ── Profanity filter ─────────────────────────────────────────────────────
+PROFANITY_FILTER_ENABLED: bool = os.getenv("PROFANITY_FILTER_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+# How many curse words in one message before the bot acts. 1 = censor any.
+PROFANITY_THRESHOLD: int = _int("PROFANITY_THRESHOLD", 1)
+# "censor" = delete + repost a starred version; "delete" = delete + brief warning.
+PROFANITY_ACTION: str = os.getenv("PROFANITY_ACTION", "censor").strip().lower()
+# Extra words to treat as profanity (comma-separated), added to the built-in list.
+PROFANITY_EXTRA_WORDS: list[str] = _csv("PROFANITY_EXTRA_WORDS", "")
+# Members with Manage Messages (mods/admins) are exempt when this is on.
+PROFANITY_BYPASS_MODS: bool = os.getenv("PROFANITY_BYPASS_MODS", "true").strip().lower() in {"1", "true", "yes"}
 
 
 def validate() -> list[str]:

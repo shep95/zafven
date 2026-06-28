@@ -7,7 +7,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core import zodiac, dates, premium
+from core import zodiac, dates
 from core.brain_loader import persona_system_prompt
 from core.model_gateway import GatewayError
 
@@ -20,7 +20,6 @@ class ZodiacCog(commands.Cog):
 
     @app_commands.command(name="zodiac", description="Your Chinese zodiac animal + element reading.")
     @app_commands.describe(birth_date="e.g. 1995-08-23")
-    @premium.premium_only()
     async def zodiac(self, interaction: discord.Interaction, birth_date: str) -> None:
         try:
             bdate = dates.parse_date(birth_date)

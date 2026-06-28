@@ -2,9 +2,8 @@
 
 Readings (Vedic, numerology, Chinese zodiac, outlook, vibe) are computed
 deterministically in code and narrated by the Gemini LLM through a single
-ModelGateway. Gemini is required, and reading commands are paywalled behind a
-premium role / Discord subscription. Server features (join/leave logging,
-inactive cleanup) need no LLM.
+ModelGateway. Gemini is required for readings. Server features (join/leave
+logging, inactive cleanup, profanity filter) need no LLM.
 """
 from __future__ import annotations
 
@@ -15,7 +14,6 @@ import discord
 from discord.ext import commands
 
 import config
-from core import premium
 from core.model_gateway import ModelGateway
 
 logging.basicConfig(level=logging.INFO,
@@ -32,6 +30,7 @@ INITIAL_COGS = [
     "cogs.audit_cog",
     "cogs.logging_cog",
     "cogs.moderation_cog",
+    "cogs.profanity_cog",
     "cogs.help_cog",
 ]
 
@@ -73,10 +72,6 @@ class Zafven(commands.Bot):
 
     async def on_app_command_error(self, interaction: discord.Interaction,
                                    error: discord.app_commands.AppCommandError) -> None:
-        if isinstance(error, premium.PremiumRequired):
-            text, view = premium.build_upsell(interaction)
-            await self._respond(interaction, text, view)
-            return
         if isinstance(error, discord.app_commands.MissingPermissions):
             await self._respond(interaction, "You don't have permission to use this command.")
             return
@@ -84,16 +79,12 @@ class Zafven(commands.Bot):
         await self._respond(interaction, f"Something went wrong: `{error}`")
 
     @staticmethod
-    async def _respond(interaction: discord.Interaction, content: str,
-                       view: discord.ui.View | None = None) -> None:
-        kwargs = {"ephemeral": True}
-        if view is not None:
-            kwargs["view"] = view
+    async def _respond(interaction: discord.Interaction, content: str) -> None:
         try:
             if interaction.response.is_done():
-                await interaction.followup.send(content, **kwargs)
+                await interaction.followup.send(content, ephemeral=True)
             else:
-                await interaction.response.send_message(content, **kwargs)
+                await interaction.response.send_message(content, ephemeral=True)
         except discord.HTTPException:
             pass
 

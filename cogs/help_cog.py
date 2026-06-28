@@ -23,7 +23,7 @@ class HelpCog(commands.Cog):
                    "`/imagine <image> [question]` — describe & interpret an uploaded image"),
             inline=False)
         embed.add_field(
-            name="🔎 Code audit (premium)",
+            name="🔎 Code audit",
             value=("`/audit <file>` — upload code or a .zip; zafven narrates it, finds logic / "
                    "workflow / bug / security / supply-chain flaws with app impact, then forges "
                    "the fixed code on your approval"),
@@ -32,7 +32,8 @@ class HelpCog(commands.Cog):
             name="🛡️ Server management",
             value=("`/kick_inactive [days] [dry_run] [message]` — preview/remove inactive members "
                    "with a reinvite DM (dry-run by default)\n"
-                   "Join/leave events are logged automatically."),
+                   "Join/leave events are logged automatically.\n"
+                   "Curse words are auto-censored."),
             inline=False)
         embed.set_footer(text="Readings are for reflection & entertainment, not advice.")
         await interaction.response.send_message(embed=embed, ephemeral=True)
