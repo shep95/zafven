@@ -100,7 +100,7 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 | *(daily/weekly)* | A **transit + koan** posts to `#oracle` daily; a weekly **egregore digest** on Mondays |
 | `/kick_inactive [days] [dry_run] [message]` | Preview/remove inactive members + reinvite DM (**dry-run by default**, admin-gated) |
 | *(chat)* | **@mention or reply to Zafven** and she talks back — in character (she/her), jokes, banter, moods. She **remembers** what you tell her (`/memory`, `/forget`) |
-| *(automatic)* | **Welcome card**, leave log, deleted-message log, curse-word censor, anti-spam/scam, **anti-cyberbullying** |
+| *(automatic)* | **Welcome card**, leave log, deleted-message log, curse-word censor, anti-spam/scam, anti-cyberbullying, **anti-manipulation tactic callouts** |
 
 ## Moderation: welcome, anti-spam, profanity
 
@@ -117,6 +117,12 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
   invite / scam links, and briefly times out the offender. All thresholds are
   configurable; mods (Manage Messages) are exempt. Needs **Manage Messages** +
   **Moderate Members**.
+- **Anti-manipulation tactic callouts** ([`cogs/antimanip_cog.py`](cogs/antimanip_cog.py)) —
+  flags known social-engineering **tactics** (phishing, fake account-verification,
+  giveaway bait, money-doubler, staff impersonation), removes the message, posts a
+  short public **safety notice about the tactic**, and alerts mods in
+  `#mod-alerts`. It targets the scam *behaviour*, never labels a person's
+  character; real staff (Manage Messages) are exempt.
 - **Anti-cyberbullying** ([`cogs/antiharass_cog.py`](cogs/antiharass_cog.py)) —
   detects targeted insults and self-harm encouragement, deletes the message, and
   **@mentions the author with one warning**. If they do it again while the

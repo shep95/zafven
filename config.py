@@ -60,6 +60,12 @@ ANTISPAM_BLOCK_INVITES: bool = os.getenv("ANTISPAM_BLOCK_INVITES", "true").strip
 ANTISPAM_TIMEOUT_SECONDS: int = _int("ANTISPAM_TIMEOUT_SECONDS", 300)
 ANTISPAM_BYPASS_MODS: bool = os.getenv("ANTISPAM_BYPASS_MODS", "true").strip().lower() in {"1", "true", "yes"}
 
+# ── Anti-manipulation / anti-scam tactics ────────────────────────────────
+ANTIMANIP_ENABLED: bool = os.getenv("ANTIMANIP_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+# Channel where mods get a private alert about flagged messages.
+MOD_ALERT_CHANNEL: str = os.getenv("MOD_ALERT_CHANNEL", "mod-alerts").strip()
+ANTIMANIP_BYPASS_MODS: bool = os.getenv("ANTIMANIP_BYPASS_MODS", "true").strip().lower() in {"1", "true", "yes"}
+
 # ── Anti-cyberbullying ───────────────────────────────────────────────────
 HARASS_FILTER_ENABLED: bool = os.getenv("HARASS_FILTER_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
 # How long (seconds) to mute a repeat offender. Default 30 minutes.
