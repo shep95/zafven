@@ -21,13 +21,24 @@ class HelpCog(commands.Cog):
                    "`/predict <question> [birth_date]` — ask the oracle (researches it + reads it)\n"
                    "`/vibe [share]` — a playful read of *your own* chat style\n"
                    "`/profile <member>` — public, for-fun read of a member's chat style (not psychology)\n"
-                   "`/imagine <image> [question]` — describe & interpret an uploaded image"),
+                   "`/imagine <image> [question]` — describe & interpret an uploaded image\n"
+                   "`/synastry <name_a> <date_a> <name_b> <date_b>` — compatibility reading"),
             inline=False)
         embed.add_field(
-            name="🔎 Code audit",
-            value=("`/audit <file>` — upload code or a .zip; zafven narrates it, finds logic / "
-                   "workflow / bug / security / supply-chain flaws with app impact, then forges "
-                   "the fixed code on your approval"),
+            name="🃏 Divination & art",
+            value=("`/tarot [question] [cards]` — tarot spread\n"
+                   "`/iching [question]` — cast the I Ching\n"
+                   "`/dream <dream>` — symbolic dream reading\n"
+                   "`/sigil <intent>` — forge a personal sigil image\n"
+                   "`/portrait <full_name> <birth_date>` — frequency portrait image"),
+            inline=False)
+        embed.add_field(
+            name="🧠 Tools",
+            value=("`/research <topic>` — live web research briefing\n"
+                   "`/tldr [count]` — summarize recent messages here\n"
+                   "`/askdoc <pdf> <question>` — ask a question about a PDF\n"
+                   "`/audit <file>` — security + quality audit of code/.zip (fix on approval)\n"
+                   "`/forge <spec> [language]` — plan a feature, then write the code on approval"),
             inline=False)
         embed.add_field(
             name="🛡️ Server management",

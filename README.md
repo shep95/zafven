@@ -87,7 +87,12 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 | `/vibe [share]` | Playful read of **your own** chat style (self-only, opt-in) |
 | `/profile <member>` | **Public** communication-style read of a member (surface vibe, **not** psychology; opt-out via the `no-readings` role) |
 | `/imagine <image> [question]` | Gemini-vision **describe & interpret** an uploaded image (no people-ID, no geolocation) |
+| `/synastry <name_a> <date_a> <name_b> <date_b>` | Compatibility reading (numerology + Chinese-zodiac scoring, narrated) |
+| `/tarot [question] [cards]` · `/iching [question]` · `/dream <dream>` | Tarot spread, I Ching cast, symbolic dream reading |
+| `/sigil <intent>` · `/portrait <name> <date>` | **Generated art** — a personal sigil / numerology frequency portrait (PNG) |
+| `/research <topic>` · `/tldr [count]` · `/askdoc <pdf> <q>` | Live web-research briefing · channel summary · ask a PDF |
 | `/audit <file>` | Upload code or a **.zip** → narrative security + quality audit (logic / workflow / bug / security / supply-chain), then **forge the fixed code on approval** |
+| `/forge <spec> [language]` | Describe a feature → design narrative → **forge the code on approval** |
 | `/kick_inactive [days] [dry_run] [message]` | Preview/remove inactive members + reinvite DM (**dry-run by default**, admin-gated) |
 | *(automatic)* | **Welcome card** on join, leave log, **deleted-message log**, curse-word censor, anti-spam/scam |
 
