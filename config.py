@@ -39,6 +39,10 @@ GEMINI_MAX_TOKENS: int = _int("GEMINI_MAX_TOKENS", 1200)
 GEMINI_TIMEOUT: int = _int("GEMINI_TIMEOUT", 45)
 GEMINI_WEB_SEARCH: str = os.getenv("GEMINI_WEB_SEARCH", "auto").strip().lower()
 
+# ── /profile (communication-style read of a member) ──────────────────────
+# Members with any of these roles are exempt and cannot be profiled.
+PROFILE_OPTOUT_ROLES: list[str] = [r.lower() for r in _csv("PROFILE_OPTOUT_ROLES", "no-readings")]
+
 # ── Anti-spam / anti-scam ────────────────────────────────────────────────
 ANTISPAM_ENABLED: bool = os.getenv("ANTISPAM_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
 # Flood: more than N messages within this many seconds = spam.

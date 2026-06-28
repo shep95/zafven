@@ -1,13 +1,16 @@
 """Vedic (sidereal) astrology — deterministic computation via Swiss Ephemeris.
 
-Uses the Lahiri ayanamsa when pyswisseph is installed and a birth time + location
-are supplied; otherwise falls back to a date-only sidereal approximation. The LLM
-narrates these values; it never computes them.
+A real chart needs date + exact time + place, so this computes the ascendant,
+Moon sign + nakshatra + pada, Sun sign, and the current Vimshottari
+Mahādashā/Antardashā. Birth-local time is converted to UTC using the place's
+timezone. Falls back to a date-only approximation only when precise data or the
+ephemeris is unavailable.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 try:
     import swisseph as swe  # type: ignore
@@ -31,84 +34,101 @@ RASHIS = [
 ]
 
 NAKSHATRAS = [
-    ("Ashwini", "Ketu", "swift healers and pioneers"),
-    ("Bharani", "Venus", "intense bearers of creative force"),
-    ("Krittika", "Sun", "sharp, purifying, no-nonsense"),
-    ("Rohini", "Moon", "magnetic, fertile, artistic"),
-    ("Mrigashira", "Mars", "searching, curious wanderers"),
-    ("Ardra", "Rahu", "stormy, transformative thinkers"),
-    ("Punarvasu", "Jupiter", "renewing, optimistic returners"),
-    ("Pushya", "Saturn", "nourishing, protective, wise"),
-    ("Ashlesha", "Mercury", "hypnotic, insightful, coiled energy"),
-    ("Magha", "Ketu", "regal, ancestral, authoritative"),
-    ("Purva Phalguni", "Venus", "playful, romantic, generous"),
-    ("Uttara Phalguni", "Sun", "reliable partners and patrons"),
-    ("Hasta", "Moon", "skillful, clever, hands-on"),
-    ("Chitra", "Mars", "brilliant builders of beauty"),
-    ("Swati", "Rahu", "independent, flexible, diplomatic"),
-    ("Vishakha", "Jupiter", "goal-driven, determined achievers"),
-    ("Anuradha", "Saturn", "devoted, friendly, disciplined"),
-    ("Jyeshtha", "Mercury", "protective, senior, responsible"),
-    ("Mula", "Ketu", "root-seekers, radical truth-diggers"),
-    ("Purva Ashadha", "Venus", "invincible, persuasive, proud"),
-    ("Uttara Ashadha", "Sun", "ethical, enduring victors"),
-    ("Shravana", "Moon", "listeners, learners, connectors"),
-    ("Dhanishta", "Mars", "rhythmic, wealthy, musical"),
-    ("Shatabhisha", "Rahu", "secretive healers and mystics"),
-    ("Purva Bhadrapada", "Jupiter", "fiery idealists with a dual nature"),
-    ("Uttara Bhadrapada", "Saturn", "deep, calm, wise counselors"),
-    ("Revati", "Mercury", "gentle, nourishing, protective guides"),
+    ("Ashwini", "Ketu"), ("Bharani", "Venus"), ("Krittika", "Sun"), ("Rohini", "Moon"),
+    ("Mrigashira", "Mars"), ("Ardra", "Rahu"), ("Punarvasu", "Jupiter"), ("Pushya", "Saturn"),
+    ("Ashlesha", "Mercury"), ("Magha", "Ketu"), ("Purva Phalguni", "Venus"),
+    ("Uttara Phalguni", "Sun"), ("Hasta", "Moon"), ("Chitra", "Mars"), ("Swati", "Rahu"),
+    ("Vishakha", "Jupiter"), ("Anuradha", "Saturn"), ("Jyeshtha", "Mercury"), ("Mula", "Ketu"),
+    ("Purva Ashadha", "Venus"), ("Uttara Ashadha", "Sun"), ("Shravana", "Moon"),
+    ("Dhanishta", "Mars"), ("Shatabhisha", "Rahu"), ("Purva Bhadrapada", "Jupiter"),
+    ("Uttara Bhadrapada", "Saturn"), ("Revati", "Mercury"),
 ]
+
+# Vimshottari dasha system.
+DASHA_SEQ = ["Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"]
+DASHA_YEARS = {"Ketu": 7, "Venus": 20, "Sun": 6, "Moon": 10, "Mars": 7,
+               "Rahu": 18, "Jupiter": 16, "Saturn": 19, "Mercury": 17}
+NAK_DEG = 360 / 27
+YEAR_DAYS = 365.25
 
 
 @dataclass
 class VedicChart:
     moon_sign: str
     moon_sign_traits: str
+    sun_sign: str | None
     nakshatra: str
     nakshatra_planet: str
-    nakshatra_keyword: str
+    pada: int | None
     ascendant: str | None
     ascendant_traits: str | None
+    mahadasha: str | None
+    antardasha: str | None
+    maha_end: date | None
     precise: bool
 
 
-def _approx_sidereal_sun_sign(birth: date) -> int:
-    boundaries = [
-        (1, 14), (2, 13), (3, 14), (4, 14), (5, 15), (6, 15),
-        (7, 16), (8, 17), (9, 17), (10, 17), (11, 16), (12, 16),
-    ]
-    start_index = 9
-    idx = 0
-    for i, (m, d) in enumerate(boundaries):
-        if (birth.month, birth.day) >= (m, d):
-            idx = i
-    return (start_index + idx) % 12
+def compute_dashas(moon_lon: float, birth: date, on: date) -> tuple[str, str, date]:
+    """Current Mahādashā lord, Antardashā lord, and Mahādashā end date."""
+    nak_index = int(moon_lon // NAK_DEG)
+    start_idx = nak_index % 9
+    frac = (moon_lon % NAK_DEG) / NAK_DEG
+    first = DASHA_SEQ[start_idx]
+    balance = (1 - frac) * DASHA_YEARS[first]
+
+    periods: list[tuple[str, date, date]] = []
+    start = birth
+    end = birth + timedelta(days=balance * YEAR_DAYS)
+    periods.append((first, start, end))
+    idx = start_idx
+    while end <= on and len(periods) < 25:
+        idx = (idx + 1) % 9
+        lord = DASHA_SEQ[idx]
+        start = end
+        end = start + timedelta(days=DASHA_YEARS[lord] * YEAR_DAYS)
+        periods.append((lord, start, end))
+
+    maha = next((p for p in periods if p[1] <= on < p[2]), periods[-1])
+    maha_lord, ms, me = maha
+
+    order = DASHA_SEQ[DASHA_SEQ.index(maha_lord):] + DASHA_SEQ[:DASHA_SEQ.index(maha_lord)]
+    total = (me - ms).days
+    a_start = ms
+    antar = maha_lord
+    for lord in order:
+        a_end = a_start + timedelta(days=total * DASHA_YEARS[lord] / 120)
+        if a_start <= on < a_end:
+            antar = lord
+            break
+        a_start = a_end
+    return maha_lord, antar, me
 
 
-def compute_chart(birth: date, birth_time: str | None = None,
-                  lat: float | None = None, lon: float | None = None) -> VedicChart:
-    if _HAS_SWE and birth_time and lat is not None and lon is not None:
-        return _compute_precise(birth, birth_time, lat, lon)
-    return _compute_approx(birth)
+def compute_precise(birth: date, hour: int, minute: int, lat: float, lon: float,
+                    tz_name: str | None) -> VedicChart:
+    """Full chart from date + local time + location. Requires Swiss Ephemeris."""
+    if not _HAS_SWE:
+        return compute_approx(birth)
 
+    if tz_name:
+        local = datetime(birth.year, birth.month, birth.day, hour, minute, tzinfo=ZoneInfo(tz_name))
+        utc = local.astimezone(timezone.utc)
+    else:  # crude fallback: estimate offset from longitude
+        offset = round(lon / 15)
+        utc = datetime(birth.year, birth.month, birth.day, hour, minute,
+                       tzinfo=timezone.utc) - timedelta(hours=offset)
 
-def _compute_approx(birth: date) -> VedicChart:
-    name, traits = RASHIS[_approx_sidereal_sun_sign(birth)]
-    nak_name, nak_planet, nak_kw = NAKSHATRAS[(birth.timetuple().tm_yday - 1) % 27]
-    return VedicChart(name, traits, nak_name, nak_planet, nak_kw, None, None, False)
-
-
-def _compute_precise(birth: date, birth_time: str, lat: float, lon: float) -> VedicChart:
-    hour, minute = _parse_time(birth_time)
-    dt = datetime(birth.year, birth.month, birth.day, hour, minute, tzinfo=timezone.utc)
-    jd = swe.julday(dt.year, dt.month, dt.day, dt.hour + dt.minute / 60.0)
+    jd = swe.julday(utc.year, utc.month, utc.day, utc.hour + utc.minute / 60 + utc.second / 3600)
     swe.set_sid_mode(swe.SIDM_LAHIRI, 0, 0)
     flags = swe.FLG_SIDEREAL | swe.FLG_SWIEPH
 
     moon_lon = swe.calc_ut(jd, swe.MOON, flags)[0][0] % 360
+    sun_lon = swe.calc_ut(jd, swe.SUN, flags)[0][0] % 360
     moon_name, moon_traits = RASHIS[int(moon_lon // 30)]
-    nak_name, nak_planet, nak_kw = NAKSHATRAS[int(moon_lon // (360 / 27))]
+    sun_name = RASHIS[int(sun_lon // 30)][0]
+    nak_idx = int(moon_lon // NAK_DEG)
+    nak_name, nak_planet = NAKSHATRAS[nak_idx]
+    pada = int((moon_lon % NAK_DEG) // (NAK_DEG / 4)) + 1
 
     asc_name = asc_traits = None
     try:
@@ -117,11 +137,37 @@ def _compute_precise(birth: date, birth_time: str, lat: float, lon: float) -> Ve
     except Exception:  # noqa: BLE001
         pass
 
-    return VedicChart(moon_name, moon_traits, nak_name, nak_planet, nak_kw,
-                      asc_name, asc_traits, True)
+    maha, antar, maha_end = compute_dashas(moon_lon, birth, date.today())
+    return VedicChart(
+        moon_sign=moon_name, moon_sign_traits=moon_traits, sun_sign=sun_name,
+        nakshatra=nak_name, nakshatra_planet=nak_planet, pada=pada,
+        ascendant=asc_name, ascendant_traits=asc_traits,
+        mahadasha=maha, antardasha=antar, maha_end=maha_end, precise=True,
+    )
 
 
-def _parse_time(value: str) -> tuple[int, int]:
+def _approx_sidereal_sun_sign(birth: date) -> int:
+    boundaries = [(1, 14), (2, 13), (3, 14), (4, 14), (5, 15), (6, 15),
+                  (7, 16), (8, 17), (9, 17), (10, 17), (11, 16), (12, 16)]
+    idx = 0
+    for i, (m, d) in enumerate(boundaries):
+        if (birth.month, birth.day) >= (m, d):
+            idx = i
+    return (9 + idx) % 12
+
+
+def compute_approx(birth: date) -> VedicChart:
+    name, traits = RASHIS[_approx_sidereal_sun_sign(birth)]
+    nak_name, nak_planet = NAKSHATRAS[(birth.timetuple().tm_yday - 1) % 27]
+    return VedicChart(
+        moon_sign=name, moon_sign_traits=traits, sun_sign=None,
+        nakshatra=nak_name, nakshatra_planet=nak_planet, pada=None,
+        ascendant=None, ascendant_traits=None,
+        mahadasha=None, antardasha=None, maha_end=None, precise=False,
+    )
+
+
+def parse_time(value: str) -> tuple[int, int]:
     value = value.strip().lower().replace(" ", "")
     ampm = None
     if value.endswith("am"):

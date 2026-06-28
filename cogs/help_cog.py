@@ -15,11 +15,12 @@ class HelpCog(commands.Cog):
         embed = discord.Embed(title="🜲 zafven — commands", color=discord.Color.dark_purple())
         embed.add_field(
             name="🔮 Readings (LLM-narrated, entertainment)",
-            value=("`/vedic <birth_date> [time] [lat] [lon]` — Vedic astrology\n"
-                   "`/numerology <full_name> <birth_date>` — numerology\n"
-                   "`/zodiac <birth_date>` — Chinese zodiac\n"
-                   "`/predict <birth_date> [focus] [chart_image]` — astrological outlook (web + vision)\n"
+            value=("`/vedic <birth_date> <birth_time> <birth_place>` — full Vedic chart + dashā\n"
+                   "`/numerology <full_name> <birth_date>` — solar + lunar numerology\n"
+                   "`/zodiac <birth_date>` — Chinese zodiac (year/month/day)\n"
+                   "`/predict <question> [birth_date]` — ask the oracle (researches it + reads it)\n"
                    "`/vibe [share]` — a playful read of *your own* chat style\n"
+                   "`/profile <member>` — public, for-fun read of a member's chat style (not psychology)\n"
                    "`/imagine <image> [question]` — describe & interpret an uploaded image"),
             inline=False)
         embed.add_field(

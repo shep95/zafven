@@ -1,9 +1,9 @@
-"""/predict — entertainment astrological outlook.
+"""/predict — ask a free-form question; zafven researches it + reads it astrologically.
 
-Uses Gemini's Google Search grounding to anchor itself in *current* planetary
-transits, and optionally Gemini vision to read an uploaded birth-chart image. The
-persona + anti-spiral guards keep this firmly in entertainment territory: no
-financial, medical, or real-world-event forecasting, no dated guarantees.
+Uses Gemini Google-Search grounding for current real context, then an astrological
+lens. The prediction brain hard-guards it: current context + entertainment mood,
+but NO specific financial/market price calls, no medical/legal/safety direction,
+no death/targeting predictions.
 """
 from __future__ import annotations
 
@@ -13,70 +13,52 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core import vedic, dates
 from core.brain_loader import persona_system_prompt
 from core.model_gateway import GatewayError
 
 log = logging.getLogger("zafven.predict")
-
-MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
 
 class PredictCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @app_commands.command(name="predict", description="A for-fun astrological outlook based on current transits.")
+    @app_commands.command(name="predict", description="Ask the oracle a question — it researches it + reads it astrologically.")
     @app_commands.describe(
-        birth_date="Your birth date, e.g. 1995-08-23",
-        focus="What to focus the outlook on (e.g. general, creativity, relationships).",
-        chart_image="Optional: upload a birth-chart image for zafven to read.",
+        question="Your question, e.g. 'what's the vibe for BTC this week?'",
+        birth_date="Optional: your birth date, to weave your chart into the answer.",
     )
-    async def predict(self, interaction: discord.Interaction, birth_date: str,
-                      focus: str = "general", chart_image: discord.Attachment | None = None) -> None:
-        try:
-            bdate = dates.parse_date(birth_date)
-        except ValueError as exc:
-            await interaction.response.send_message(f"❌ {exc}", ephemeral=True)
+    async def predict(self, interaction: discord.Interaction, question: str,
+                      birth_date: str | None = None) -> None:
+        if len(question.strip()) < 4:
+            await interaction.response.send_message("❌ Ask a fuller question.", ephemeral=True)
             return
 
         await interaction.response.defer(thinking=True)
-        chart = vedic.compute_chart(bdate)
-
-        image_bytes = image_mime = None
-        if chart_image is not None:
-            if chart_image.size > MAX_IMAGE_BYTES or not (chart_image.content_type or "").startswith("image/"):
-                await interaction.followup.send("❌ Please attach an image under 5 MB.")
-                return
-            image_bytes = await chart_image.read()
-            image_mime = chart_image.content_type
-
+        context = f"The asker's birth date is {birth_date}." if birth_date else ""
         user_prompt = (
-            f"Give {interaction.user.display_name} a forward-looking astrological *outlook* "
-            f"(focus: {focus}). Their natal Moon sign is {chart.moon_sign} and nakshatra is "
-            f"{chart.nakshatra}. Use web search to ground it in the CURRENT major planetary "
-            "transits this week. Frame everything as energetic tendencies and self-reflection "
-            "prompts — NOT as predictions of real events, money, health, or fixed dates. "
-            "4-6 short paragraphs."
+            f"Question from {interaction.user.display_name}: \"{question.strip()}\"\n{context}\n"
+            "Use web search for the CURRENT real situation around this, then give the oracle "
+            "reading per your rules. If it's a market/price/financial question, give the current "
+            "context + an entertainment astrological mood ONLY — no price target, no buy/sell, and "
+            "say it's not financial advice. 4-6 short paragraphs."
         )
-        if image_bytes:
-            user_prompt += " The attached image is the reader's chart — describe what you can see and weave it in."
 
         try:
             reading = await self.bot.gateway.narrate(  # type: ignore[attr-defined]
-                persona_system_prompt("vedic"), user_prompt,
-                image_bytes=image_bytes, image_mime=image_mime, web_search=True)
+                persona_system_prompt("prediction"), user_prompt, web_search=True, max_tokens=1400)
         except GatewayError as exc:
-            log.warning("predict narration failed: %s", exc)
-            await interaction.followup.send("🔌 The reading engine is unreachable right now. Try again shortly.")
+            log.warning("predict failed: %s", exc)
+            await interaction.followup.send("🔌 The oracle is unreachable right now. Try again shortly.")
             return
 
         embed = discord.Embed(
-            title=f"🌌 Outlook — {interaction.user.display_name} ({focus})",
+            title="🔮 The Oracle",
             description=reading[:4000],
             color=discord.Color.blue(),
         )
-        embed.set_footer(text="zafven • symbolic outlook for reflection — not a forecast, not advice")
+        embed.add_field(name="You asked", value=question[:1024], inline=False)
+        embed.set_footer(text="zafven • a symbolic reflection for entertainment — not a forecast or advice")
         await interaction.followup.send(embed=embed)
 
 

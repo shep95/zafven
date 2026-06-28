@@ -80,11 +80,12 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 
 | Command | What it does |
 |---|---|
-| `/vedic <birth_date> [time] [lat] [lon]` | Sidereal reading — Moon sign, nakshatra, ascendant |
+| `/vedic <birth_date> <birth_time> <birth_place>` | **Full** sidereal chart — geocodes the birthplace → timezone → UTC, computes ascendant, Moon + nakshatra/pada, Sun, and current **Vimshottari Mahādashā/Antardashā** |
 | `/numerology <full_name> <birth_date>` | Full reading on **both** solar & Chinese-lunar birthday — driver, life path, month, year, expression, soul urge, personality, maturity + planet rulers |
 | `/zodiac <birth_date>` | Chinese zodiac — **year + month + day** animals from your lunar birthday |
-| `/predict <birth_date> [focus] [chart_image]` | Astrological **outlook** — uses Gemini **Google Search** for current transits and **vision** to read an uploaded chart |
+| `/predict <question> [birth_date]` | **Ask-anything oracle** — Gemini **Google Search** for current real context + an astrological lens (entertainment; no financial/price forecasts) |
 | `/vibe [share]` | Playful read of **your own** chat style (self-only, opt-in) |
+| `/profile <member>` | **Public** communication-style read of a member (surface vibe, **not** psychology; opt-out via the `no-readings` role) |
 | `/imagine <image> [question]` | Gemini-vision **describe & interpret** an uploaded image (no people-ID, no geolocation) |
 | `/audit <file>` | Upload code or a **.zip** → narrative security + quality audit (logic / workflow / bug / security / supply-chain), then **forge the fixed code on approval** |
 | `/kick_inactive [days] [dry_run] [message]` | Preview/remove inactive members + reinvite DM (**dry-run by default**, admin-gated) |
@@ -190,6 +191,7 @@ flowchart LR
 | `ANTISPAM_MAX_MENTIONS` | `5` | mentions per message before acting |
 | `ANTISPAM_TIMEOUT_SECONDS` | `300` | how long to mute a spammer (0 = no mute) |
 | `WELCOME_CHANNEL` | `welcome` | channel for the join welcome card |
+| `PROFILE_OPTOUT_ROLES` | `no-readings` | roles that can't be `/profile`d |
 | `GUILD_ID` | *(blank)* | restrict commands to one guild for instant sync |
 | `MEMBER_LOG_CHANNEL` | `member-log` | join/leave log channel |
 | `PROTECTED_ROLES` | `Admin,Moderator,Mod,Booster` | never auto-kicked |
