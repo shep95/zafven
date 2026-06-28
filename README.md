@@ -89,13 +89,18 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 | `/imagine <image> [question]` | Gemini-vision **describe & interpret** an uploaded image (no people-ID, no geolocation) |
 | `/audit <file>` | Upload code or a **.zip** → narrative security + quality audit (logic / workflow / bug / security / supply-chain), then **forge the fixed code on approval** |
 | `/kick_inactive [days] [dry_run] [message]` | Preview/remove inactive members + reinvite DM (**dry-run by default**, admin-gated) |
-| *(automatic)* | **Welcome card** on join, leave log, curse-word censor, anti-spam/scam |
+| *(automatic)* | **Welcome card** on join, leave log, **deleted-message log**, curse-word censor, anti-spam/scam |
 
 ## Moderation: welcome, anti-spam, profanity
 
 - **Welcome card** ([`cogs/logging_cog.py`](cogs/logging_cog.py)) — posts a rich
   embed to `#welcome` on join (username, ID, account age, join time, member #).
   Leaves are logged to `#member-log`. Both channels auto-create if missing.
+- **Deleted-message log** ([`cogs/messagelog_cog.py`](cogs/messagelog_cog.py)) —
+  posts every deleted message to `#message-log` with content, author, channel,
+  send + delete timestamps, whether it was a reply (and to whom), and — via the
+  audit log — **who deleted it** (the author themselves or a moderator). Needs
+  **View Audit Log**.
 - **Anti-spam / anti-scam** ([`cogs/antispam_cog.py`](cogs/antispam_cog.py)) —
   auto-removes message floods, repeated messages, mass-mentions, and Discord
   invite / scam links, and briefly times out the offender. All thresholds are
@@ -147,17 +152,18 @@ flowchart LR
 3. **Open the invite link** (replace `YOUR_APP_ID`):
 
    ```
-   https://discord.com/oauth2/authorize?client_id=YOUR_APP_ID&permissions=1099511753747&scope=bot+applications.commands
+   https://discord.com/oauth2/authorize?client_id=YOUR_APP_ID&permissions=1099511753875&scope=bot+applications.commands
    ```
 
-   `permissions=1099511753747` grants exactly what zafven needs:
+   `permissions=1099511753875` grants exactly what zafven needs:
 
    | Permission | Used for |
    |---|---|
    | View Channels · Send Messages · Embed Links · Attach Files | posting readings & audit files |
-   | Read Message History | `/vibe`, `/kick_inactive` activity scan |
+   | Read Message History | `/vibe`, `/profile`, `/kick_inactive` scan |
    | Manage Messages | profanity filter + anti-spam (delete) |
    | Moderate Members | anti-spam timeouts |
+   | View Audit Log | attributing deleted messages (self vs mod) |
    | Kick Members | `/kick_inactive` |
    | Manage Channels | auto-creating welcome / log channels |
    | Create Instant Invite | the reinvite DM |
@@ -191,6 +197,7 @@ flowchart LR
 | `ANTISPAM_MAX_MENTIONS` | `5` | mentions per message before acting |
 | `ANTISPAM_TIMEOUT_SECONDS` | `300` | how long to mute a spammer (0 = no mute) |
 | `WELCOME_CHANNEL` | `welcome` | channel for the join welcome card |
+| `DELETED_LOG_CHANNEL` | `message-log` | channel for the deleted-message log |
 | `PROFILE_OPTOUT_ROLES` | `no-readings` | roles that can't be `/profile`d |
 | `GUILD_ID` | *(blank)* | restrict commands to one guild for instant sync |
 | `MEMBER_LOG_CHANNEL` | `member-log` | join/leave log channel |

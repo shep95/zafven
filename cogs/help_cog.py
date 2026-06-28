@@ -34,6 +34,7 @@ class HelpCog(commands.Cog):
             value=("`/kick_inactive [days] [dry_run] [message]` — preview/remove inactive members "
                    "with a reinvite DM (dry-run by default)\n"
                    "New members get a **welcome card**; leaves are logged.\n"
+                   "**Deleted messages** are logged (who/when/reply) for mods.\n"
                    "Curse words are auto-censored; spam/scam (floods, mass-mentions, "
                    "invite & scam links) is auto-removed."),
             inline=False)
