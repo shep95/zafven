@@ -28,6 +28,7 @@ INITIAL_COGS = [
     "cogs.zodiac_cog",
     "cogs.predict_cog",
     "cogs.vibe_cog",
+    "cogs.imagine_cog",
     "cogs.audit_cog",
     "cogs.logging_cog",
     "cogs.moderation_cog",

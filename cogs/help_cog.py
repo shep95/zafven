@@ -19,7 +19,8 @@ class HelpCog(commands.Cog):
                    "`/numerology <full_name> <birth_date>` — numerology\n"
                    "`/zodiac <birth_date>` — Chinese zodiac\n"
                    "`/predict <birth_date> [focus] [chart_image]` — astrological outlook (web + vision)\n"
-                   "`/vibe [share]` — a playful read of *your own* chat style"),
+                   "`/vibe [share]` — a playful read of *your own* chat style\n"
+                   "`/imagine <image> [question]` — describe & interpret an uploaded image"),
             inline=False)
         embed.add_field(
             name="🔎 Code audit (premium)",
