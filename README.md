@@ -101,7 +101,7 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 | *(daily/weekly)* | A **transit + koan** posts to `#oracle` daily; a weekly **egregore digest** on Mondays |
 | `/report <message_link> [reason]` | Escalate a message to mods — forwards it to `#mod-alerts` and **@mentions the mod role** |
 | `/kick_inactive [days] [dry_run] [message]` | Preview/remove inactive members + reinvite DM (**dry-run by default**, admin-gated) |
-| *(chat)* | **@mention or reply to Zafven** and she talks back — in character (she/her), jokes, banter, moods. She **remembers** what you tell her (`/memory`, `/forget`) |
+| *(chat)* | **@mention or reply to Zafven to ask her anything** — she answers questions (with web look-up when needed), jokes, and banters, in character (she/her). She **remembers** what you tell her (`/memory`, `/forget`) |
 | *(automatic)* | **Welcome card**, leave log, deleted-message log, curse-word censor, anti-spam/scam, anti-cyberbullying, anti-manipulation, **file/image safety scan (NSFW + malware)** |
 
 ## Moderation: welcome, anti-spam, profanity

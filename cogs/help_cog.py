@@ -43,8 +43,8 @@ class HelpCog(commands.Cog):
             inline=False)
         embed.add_field(
             name="💬 Just talk to her",
-            value=("**@mention Zafven** or reply to her and she'll chat back — jokes, banter, "
-                   "moods and all. She's the resident oracle (she/her).\n"
+            value=("**@mention Zafven** (or reply to her) to **ask her anything** — she answers "
+                   "questions, looks things up, jokes, and banters. She's the resident oracle (she/her).\n"
                    "She **remembers** what you tell her. `/memory` to see it, `/forget` to wipe it."),
             inline=False)
         embed.add_field(

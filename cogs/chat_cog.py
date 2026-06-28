@@ -84,7 +84,7 @@ class ChatCog(commands.Cog):
                 transcript = await self._context(message)
                 raw = await self.bot.gateway.narrate(  # type: ignore[attr-defined]
                     self._system(message.author.display_name, notes), transcript,
-                    web_search=False, max_tokens=320)
+                    web_search=None, max_tokens=600)
         except GatewayError as exc:
             log.warning("chat reply failed: %s", exc)
             return
