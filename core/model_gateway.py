@@ -66,13 +66,19 @@ class ModelGateway:
                 }
             })
 
+        generation_config: dict = {
+            "temperature": 0.85,
+            "maxOutputTokens": max_tokens or config.GEMINI_MAX_TOKENS,
+        }
+        # Disable/limit "thinking" so it doesn't consume the answer's token budget
+        # (which truncates replies mid-sentence on 2.5 models).
+        if config.GEMINI_THINKING_BUDGET >= 0:
+            generation_config["thinkingConfig"] = {"thinkingBudget": config.GEMINI_THINKING_BUDGET}
+
         payload: dict = {
             "systemInstruction": {"parts": [{"text": system_prompt}]},
             "contents": [{"role": "user", "parts": parts}],
-            "generationConfig": {
-                "temperature": 0.85,
-                "maxOutputTokens": max_tokens or config.GEMINI_MAX_TOKENS,
-            },
+            "generationConfig": generation_config,
         }
         if self._wants_search(web_search):
             payload["tools"] = [{"google_search": {}}]
@@ -120,7 +126,10 @@ class ModelGateway:
             raise GatewayError("Gemini returned no candidates.")
 
         parts = (candidates[0].get("content") or {}).get("parts") or []
-        text = "".join(p["text"] for p in parts if isinstance(p, dict) and "text" in p).strip()
+        text = "".join(
+            p["text"] for p in parts
+            if isinstance(p, dict) and "text" in p and not p.get("thought")
+        ).strip()
         if not text:
             reason = candidates[0].get("finishReason", "unknown")
             raise GatewayError(f"Gemini returned an empty result (finishReason={reason}).")

@@ -39,6 +39,9 @@ GEMINI_BASE_URL: str = os.getenv(
 GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
 GEMINI_MAX_TOKENS: int = _int("GEMINI_MAX_TOKENS", 1200)
 GEMINI_TIMEOUT: int = _int("GEMINI_TIMEOUT", 45)
+# 2.5 models "think" before answering, which can eat the output budget and cut
+# replies off mid-sentence. 0 disables thinking; -1 = dynamic; >0 = fixed budget.
+GEMINI_THINKING_BUDGET: int = _int("GEMINI_THINKING_BUDGET", 0)
 GEMINI_WEB_SEARCH: str = os.getenv("GEMINI_WEB_SEARCH", "auto").strip().lower()
 
 # ── /profile (communication-style read of a member) ──────────────────────
