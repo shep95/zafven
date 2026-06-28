@@ -41,6 +41,11 @@ class HelpCog(commands.Cog):
                    "`/forge <spec> [language]` — plan a feature, then write the code on approval"),
             inline=False)
         embed.add_field(
+            name="💬 Just talk to her",
+            value=("**@mention Zafven** or reply to her and she'll chat back — jokes, banter, "
+                   "moods and all. She's the resident oracle (she/her)."),
+            inline=False)
+        embed.add_field(
             name="🌌 Community & events",
             value=("`/rank [member]` · `/leaderboard` — initiation XP & levels (earn roles by chatting)\n"
                    "`/capsule <message> <deliver_on> [public]` — send a message to the future\n"

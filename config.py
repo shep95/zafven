@@ -80,6 +80,16 @@ PROFANITY_EXTRA_WORDS: list[str] = _csv("PROFANITY_EXTRA_WORDS", "")
 PROFANITY_BYPASS_MODS: bool = os.getenv("PROFANITY_BYPASS_MODS", "true").strip().lower() in {"1", "true", "yes"}
 
 
+# ── Live chat personality (Zafven) ───────────────────────────────────────
+CHAT_ENABLED: bool = os.getenv("CHAT_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+# Chance (0.0-1.0) she chimes in on a message that didn't address her. 0 = only
+# replies when @mentioned or replied to.
+CHAT_AMBIENT_CHANCE: float = float(os.getenv("CHAT_AMBIENT_CHANCE", "0.0") or 0.0)
+CHAT_COOLDOWN_SECONDS: int = _int("CHAT_COOLDOWN_SECONDS", 6)
+CHAT_CONTEXT_MESSAGES: int = _int("CHAT_CONTEXT_MESSAGES", 12)
+# Restrict chatting to these channel names (comma-separated). Empty = everywhere.
+CHAT_CHANNELS: list[str] = _csv("CHAT_CHANNELS", "")
+
 # ── Phase 2: persistence + scheduled/stateful features ───────────────────
 DATA_CHANNEL: str = os.getenv("DATA_CHANNEL", "zafven-data").strip()
 
