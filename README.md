@@ -126,6 +126,41 @@ flowchart LR
 3. Railway reads [`railway.json`](railway.json) / [`Procfile`](Procfile) and runs the `worker` process.
 4. Watch the deploy logs for `zafven online as …`.
 
+## Invite the bot to your server
+
+1. **Get your Application ID** — [Developer Portal](https://discord.com/developers/applications)
+   → your app → **General Information** → copy the **Application ID**.
+2. **Enable intents** — **Bot** tab → **Privileged Gateway Intents** → turn on
+   **Server Members Intent** and **Message Content Intent** (required).
+3. **Open the invite link** (replace `YOUR_APP_ID`):
+
+   ```
+   https://discord.com/oauth2/authorize?client_id=YOUR_APP_ID&permissions=125971&scope=bot+applications.commands
+   ```
+
+   `permissions=125971` grants exactly what zafven needs:
+
+   | Permission | Used for |
+   |---|---|
+   | View Channels · Send Messages · Embed Links · Attach Files | posting readings & audit files |
+   | Read Message History | `/vibe`, `/kick_inactive` activity scan |
+   | Manage Messages | the profanity filter (delete + repost) |
+   | Kick Members | `/kick_inactive` |
+   | Manage Channels | auto-creating the log channel |
+   | Create Instant Invite | the reinvite DM |
+
+   *(Or use **OAuth2 → URL Generator**: tick `bot` + `applications.commands`, then
+   those permissions, and copy the generated URL.)*
+4. **Authorize** — open the link, pick your server (you need **Manage Server**
+   there), and confirm. The bot now appears in your member list.
+5. **It must be running to respond** — the bot shows **offline** until the Railway
+   deploy is live with `DISCORD_TOKEN` + `GEMINI_API_KEY` set. Once the logs say
+   `zafven online as …`, type `/` in any channel to see its commands.
+
+> Slash commands can take up to ~1 hour to appear globally. To make them show
+> **instantly** while testing, set `GUILD_ID` to your server's ID (enable Discord
+> Developer Mode → right-click the server → **Copy Server ID**).
+
 ## Configuration
 
 | Key | Default | Purpose |
