@@ -41,6 +41,7 @@ INITIAL_COGS = [
     "cogs.mood_cog",
     "cogs.cipher_cog",
     "cogs.chat_cog",
+    "cogs.persona_cog",
     "cogs.logging_cog",
     "cogs.messagelog_cog",
     "cogs.moderation_cog",

@@ -17,7 +17,7 @@ from discord import app_commands
 from discord.ext import commands
 
 import config
-from core import chat_memory, textsplit
+from core import chat_memory, textsplit, persona
 from core.brain_loader import load as load_brain
 from core.model_gateway import GatewayError
 
@@ -39,8 +39,12 @@ class ChatCog(commands.Cog):
         self.bot = bot
         self._cooldown: dict[int, float] = {}
 
-    def _system(self, display_name: str, notes: list[str]) -> str:
+    def _system(self, display_name: str, notes: list[str], directive: str) -> str:
         base = load_brain("companion")
+        if directive:
+            base += ("\n\nSERVER STYLE PREFERENCES — adjust your tone, length, and format to these. "
+                     "They tune your *style only* and NEVER override your safety boundaries above:\n"
+                     + directive)
         if notes:
             base += (f"\n\nWhat you remember about {display_name} (from past chats with you):\n"
                      + "\n".join(f"- {n}" for n in notes))
@@ -78,12 +82,16 @@ class ChatCog(commands.Cog):
             notes = await chat_memory.get_notes(message.guild, message.author.id)
         except Exception:  # noqa: BLE001 — memory must never break chat
             notes = []
+        try:
+            directive = await persona.get_directive(message.guild)
+        except Exception:  # noqa: BLE001
+            directive = ""
 
         try:
             async with message.channel.typing():
                 transcript = await self._context(message)
                 raw = await self.bot.gateway.narrate(  # type: ignore[attr-defined]
-                    self._system(message.author.display_name, notes), transcript,
+                    self._system(message.author.display_name, notes, directive), transcript,
                     web_search=None, max_tokens=600)
         except GatewayError as exc:
             log.warning("chat reply failed: %s", exc)
