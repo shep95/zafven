@@ -17,7 +17,7 @@ from discord import app_commands
 from discord.ext import commands
 
 import config
-from core import chat_memory
+from core import chat_memory, textsplit
 from core.brain_loader import load as load_brain
 from core.model_gateway import GatewayError
 
@@ -92,19 +92,30 @@ class ChatCog(commands.Cog):
         remembered = REMEMBER_RE.findall(raw)
         visible = REMEMBER_RE.sub("", raw).strip() or "…"
 
-        try:
-            await message.reply(visible[:2000], mention_author=False)
-        except discord.HTTPException:
-            try:
-                await message.channel.send(visible[:2000])
-            except discord.HTTPException:
-                pass
+        await self._send(message, textsplit.chunk(visible))
 
         for note in remembered:
             try:
                 await chat_memory.add_note(message.guild, message.author.id, note)
             except Exception:  # noqa: BLE001
                 pass
+
+    async def _send(self, message: discord.Message, parts: list[str]) -> None:
+        if not parts:
+            return
+        # First piece replies to the user; the rest follow as plain messages.
+        try:
+            await message.reply(parts[0], mention_author=False)
+        except discord.HTTPException:
+            try:
+                await message.channel.send(parts[0])
+            except discord.HTTPException:
+                return
+        for part in parts[1:]:
+            try:
+                await message.channel.send(part)
+            except discord.HTTPException:
+                break
 
     async def _context(self, message: discord.Message) -> str:
         lines: list[str] = []
