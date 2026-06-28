@@ -77,6 +77,8 @@ FILESCAN_BYPASS_MODS: bool = os.getenv("FILESCAN_BYPASS_MODS", "false").strip().
 ANTIMANIP_ENABLED: bool = os.getenv("ANTIMANIP_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
 # Channel where mods get a private alert about flagged messages.
 MOD_ALERT_CHANNEL: str = os.getenv("MOD_ALERT_CHANNEL", "mod-alerts").strip()
+# Roles pinged when an alert fires (comma-separated role names).
+MOD_ROLES: list[str] = _csv("MOD_ROLES", "Moderator,Admin,Mod")
 ANTIMANIP_BYPASS_MODS: bool = os.getenv("ANTIMANIP_BYPASS_MODS", "true").strip().lower() in {"1", "true", "yes"}
 
 # ── Anti-cyberbullying ───────────────────────────────────────────────────

@@ -58,6 +58,7 @@ class HelpCog(commands.Cog):
             name="🛡️ Server management",
             value=("`/kick_inactive [days] [dry_run] [message]` — preview/remove inactive members "
                    "with a reinvite DM (dry-run by default)\n"
+                   "`/report <message_link> [reason]` — escalate a message to the mods\n"
                    "New members get a **welcome card**; leaves are logged.\n"
                    "**Deleted messages** are logged (who/when/reply) for mods.\n"
                    "Curse words are auto-censored; spam/scam (floods, mass-mentions, "

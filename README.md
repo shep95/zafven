@@ -98,6 +98,7 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 | `/mood` | Aggregate read of the server's current vibe (no individuals named) |
 | `/cipher` (mod) · `/solve <answer>` | Cipher-puzzle events — first to solve wins |
 | *(daily/weekly)* | A **transit + koan** posts to `#oracle` daily; a weekly **egregore digest** on Mondays |
+| `/report <message_link> [reason]` | Escalate a message to mods — forwards it to `#mod-alerts` and **@mentions the mod role** |
 | `/kick_inactive [days] [dry_run] [message]` | Preview/remove inactive members + reinvite DM (**dry-run by default**, admin-gated) |
 | *(chat)* | **@mention or reply to Zafven** and she talks back — in character (she/her), jokes, banter, moods. She **remembers** what you tell her (`/memory`, `/forget`) |
 | *(automatic)* | **Welcome card**, leave log, deleted-message log, curse-word censor, anti-spam/scam, anti-cyberbullying, anti-manipulation, **file/image safety scan (NSFW + malware)** |
@@ -237,6 +238,15 @@ flowchart LR
 | `DEFAULT_INACTIVE_DAYS` | `30` | inactivity threshold |
 | `ACTIVITY_SCAN_LIMIT` | `2000` | messages scanned per channel |
 | `JOIN_GRACE_DAYS` | `7` | new-member exemption |
+
+## Mod alerts
+
+Anti-manipulation flags, file-scan removals, and member `/report`s all post to a
+hidden, mod-visible `#mod-alerts` channel and **@mention the mod roles**
+(`MOD_ROLES`, default `Moderator,Admin,Mod`). `/report` keeps a human in the loop:
+the bot forwards the reported message + reason, it never renders a verdict. (To
+ping a non-mentionable mod role, the bot's role may need *Mention @everyone, @here,
+and All Roles*.)
 
 ## Persistence (no database)
 

@@ -15,7 +15,7 @@ import discord
 from discord.ext import commands
 
 import config
-from core import manipulation
+from core import manipulation, modalert
 
 log = logging.getLogger("zafven.antimanip")
 
@@ -65,18 +65,6 @@ class AntiManipCog(commands.Cog):
         log.info("Anti-manipulation flagged %s in %s: %s", message.author, message.guild.name, tactic)
 
     async def _alert_mods(self, message: discord.Message, tactic: str, content: str) -> None:
-        guild = message.guild
-        channel = discord.utils.get(guild.text_channels, name=config.MOD_ALERT_CHANNEL)
-        if channel is None and guild.me.guild_permissions.manage_channels:
-            try:
-                overwrites = {guild.default_role: discord.PermissionOverwrite(view_channel=False),
-                              guild.me: discord.PermissionOverwrite(view_channel=True, send_messages=True)}
-                channel = await guild.create_text_channel(
-                    config.MOD_ALERT_CHANNEL, overwrites=overwrites, reason="zafven mod alerts")
-            except discord.HTTPException:
-                channel = None
-        if channel is None:
-            return
         embed = discord.Embed(
             title="🚩 Possible scam/manipulation",
             description=f"Tactic: **{tactic}**", color=discord.Color.dark_orange(),
@@ -85,10 +73,7 @@ class AntiManipCog(commands.Cog):
         embed.add_field(name="Channel", value=message.channel.mention)
         embed.add_field(name="Message", value=content[:1024], inline=False)
         embed.set_footer(text="Flagged the behaviour, not the person — review and decide.")
-        try:
-            await channel.send(embed=embed)
-        except discord.HTTPException:
-            pass
+        await modalert.send_alert(message.guild, embed)
 
 
 async def setup(bot: commands.Bot) -> None:
