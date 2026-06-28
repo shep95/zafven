@@ -22,6 +22,12 @@ class HelpCog(commands.Cog):
                    "`/vibe [share]` — a playful read of *your own* chat style"),
             inline=False)
         embed.add_field(
+            name="🔎 Code audit (premium)",
+            value=("`/audit <file>` — upload code or a .zip; zafven narrates it, finds logic / "
+                   "workflow / bug / security / supply-chain flaws with app impact, then forges "
+                   "the fixed code on your approval"),
+            inline=False)
+        embed.add_field(
             name="🛡️ Server management",
             value=("`/kick_inactive [days] [dry_run] [message]` — preview/remove inactive members "
                    "with a reinvite DM (dry-run by default)\n"

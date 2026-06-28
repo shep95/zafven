@@ -91,6 +91,7 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 | 🔒 `/zodiac <birth_date>` | Chinese animal + element archetype |
 | 🔒 `/predict <birth_date> [focus] [chart_image]` | Astrological **outlook** — uses Gemini **Google Search** for current transits and **vision** to read an uploaded chart |
 | 🔒 `/vibe [share]` | Playful read of **your own** chat style (self-only, opt-in) |
+| 🔒 `/audit <file>` | Upload code or a **.zip** → narrative security + quality audit (logic / workflow / bug / security / supply-chain), then **forge the fixed code on approval** |
 | `/kick_inactive [days] [dry_run] [message]` | Preview/remove inactive members + reinvite DM (**dry-run by default**, admin-gated) |
 | *(automatic)* | Logs joins & leaves to `#member-log` |
 
