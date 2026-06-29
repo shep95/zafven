@@ -36,6 +36,7 @@ INITIAL_COGS = [
     "cogs.tools_cog",
     "cogs.forge_cog",
     "cogs.knowledge_cog",
+    "cogs.media_cog",
     "cogs.ranks_cog",
     "cogs.capsule_cog",
     "cogs.scheduled_cog",

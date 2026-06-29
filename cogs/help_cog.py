@@ -38,6 +38,7 @@ class HelpCog(commands.Cog):
             value=("`/research <topic>` — live web research briefing\n"
                    "`/youtube <query>` — find YouTube videos\n"
                    "`/learn <topic|youtube link>` — post a knowledge report to #knowledge\n"
+                   "`/grab <link>` — pull an image/video from a link and post it here\n"
                    "`/tldr [count]` — summarize recent messages here\n"
                    "`/askdoc <pdf> <question>` — ask a question about a PDF\n"
                    "`/audit <file>` — security + quality audit of code/.zip (fix on approval)\n"
