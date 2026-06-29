@@ -114,6 +114,12 @@ CHAT_CONTEXT_MESSAGES: int = _int("CHAT_CONTEXT_MESSAGES", 12)
 # Restrict chatting to these channel names (comma-separated). Empty = everywhere.
 CHAT_CHANNELS: list[str] = _csv("CHAT_CHANNELS", "")
 
+# ── YouTube + knowledge reports ──────────────────────────────────────────
+# Optional YouTube Data API v3 key for /youtube search (real video links).
+YOUTUBE_API_KEY: str = os.getenv("YOUTUBE_API_KEY", "").strip()
+# Public channel where /learn posts knowledge / intelligence reports.
+KNOWLEDGE_CHANNEL: str = os.getenv("KNOWLEDGE_CHANNEL", "knowledge").strip()
+
 # ── Phase 2: persistence + scheduled/stateful features ───────────────────
 DATA_CHANNEL: str = os.getenv("DATA_CHANNEL", "zafven-data").strip()
 

@@ -37,7 +37,8 @@ MEMORY_INSTRUCTION = (
 class ChatCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
-        self._cooldown: dict[int, float] = {}
+        self._cooldown: dict[int, float] = {}            # per-channel, ambient only
+        self._user_cooldown: dict[tuple[int, int], float] = {}  # per-user anti-spam
         self._moods: dict[tuple[int, int], dict] = {}  # (guild,user) -> emotion state
 
     def _mood_for(self, guild_id: int, user_id: int, text: str, addressed: bool) -> dict:
@@ -84,13 +85,20 @@ class ChatCog(commands.Cog):
             return
 
         addressed = (self.bot.user in message.mentions) or self._is_reply_to_me(message)
-        if not addressed and random.random() >= config.CHAT_AMBIENT_CHANCE:
-            return
-
         now = time.time()
-        if now - self._cooldown.get(message.channel.id, 0) < config.CHAT_COOLDOWN_SECONDS:
-            return
-        self._cooldown[message.channel.id] = now
+        if addressed:
+            # Always answer direct @mentions/replies — only a light per-user guard.
+            ukey = (message.guild.id, message.author.id)
+            if now - self._user_cooldown.get(ukey, 0) < 2.0:
+                return
+            self._user_cooldown[ukey] = now
+        else:
+            # Unprompted chatter is rate-limited per channel.
+            if random.random() >= config.CHAT_AMBIENT_CHANCE:
+                return
+            if now - self._cooldown.get(message.channel.id, 0) < config.CHAT_COOLDOWN_SECONDS:
+                return
+            self._cooldown[message.channel.id] = now
 
         if not message.channel.permissions_for(message.guild.me).send_messages:
             return

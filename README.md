@@ -92,6 +92,8 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 | `/gematria decode\|date\|resonance <word>` | 5-cipher gematria — Chaldean, elemental signature, soul/personality, trigger numbers, date sync, resonance |
 | `/sigil <intent>` · `/portrait <name> <date>` | **Generated art** — a personal sigil / numerology frequency portrait (PNG) |
 | `/research <topic>` · `/tldr [count]` · `/askdoc <pdf> <q>` | Live web-research briefing · channel summary · ask a PDF |
+| `/youtube <query>` | Find YouTube videos (verified links with `YOUTUBE_API_KEY`, else AI-suggested) |
+| `/learn <topic \| youtube link>` | Builds a **knowledge report** (web-researched, or from a video transcript) and posts it to a public **#knowledge** channel for friends to learn |
 | `/audit <file>` | Upload code or a **.zip** → narrative security + quality audit (logic / workflow / bug / security / supply-chain), then **forge the fixed code on approval** |
 | `/forge <spec> [language]` | Describe a feature → design narrative → **forge the code on approval** |
 | `/rank [member]` · `/leaderboard` | Initiation XP & levels — earn roles by chatting |

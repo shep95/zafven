@@ -35,6 +35,7 @@ INITIAL_COGS = [
     "cogs.gematria_cog",
     "cogs.tools_cog",
     "cogs.forge_cog",
+    "cogs.knowledge_cog",
     "cogs.ranks_cog",
     "cogs.capsule_cog",
     "cogs.scheduled_cog",
