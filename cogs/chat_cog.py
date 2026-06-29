@@ -17,7 +17,7 @@ from discord import app_commands
 from discord.ext import commands
 
 import config
-from core import chat_memory, textsplit, persona
+from core import chat_memory, textsplit, persona, emotions
 from core.brain_loader import load as load_brain
 from core.model_gateway import GatewayError
 
@@ -38,13 +38,30 @@ class ChatCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._cooldown: dict[int, float] = {}
+        self._moods: dict[tuple[int, int], dict] = {}  # (guild,user) -> emotion state
 
-    def _system(self, display_name: str, notes: list[str], directive: str) -> str:
+    def _mood_for(self, guild_id: int, user_id: int, text: str, addressed: bool) -> dict:
+        import time
+        key = (guild_id, user_id)
+        now = time.time()
+        state = self._moods.get(key)
+        if state is None:
+            state = emotions.new_state()
+            state["_ts"] = now
+        emotions.decay(state, state["_ts"], now)
+        emotions.update(state, text, addressed)
+        state["_ts"] = now
+        self._moods[key] = state
+        return state
+
+    def _system(self, display_name: str, notes: list[str], directive: str, mood: str) -> str:
         base = load_brain("companion")
         if directive:
             base += ("\n\nSERVER STYLE PREFERENCES — adjust your tone, length, and format to these. "
                      "They tune your *style only* and NEVER override your safety boundaries above:\n"
                      + directive)
+        if mood:
+            base += "\n\n" + mood
         if notes:
             base += (f"\n\nWhat you remember about {display_name} (from past chats with you):\n"
                      + "\n".join(f"- {n}" for n in notes))
@@ -87,11 +104,14 @@ class ChatCog(commands.Cog):
         except Exception:  # noqa: BLE001
             directive = ""
 
+        state = self._mood_for(message.guild.id, message.author.id, message.content, addressed)
+        mood = emotions.directive(state)
+
         try:
             async with message.channel.typing():
                 transcript = await self._context(message)
                 raw = await self.bot.gateway.narrate(  # type: ignore[attr-defined]
-                    self._system(message.author.display_name, notes, directive), transcript,
+                    self._system(message.author.display_name, notes, directive, mood), transcript,
                     web_search=None, max_tokens=600)
         except GatewayError as exc:
             log.warning("chat reply failed: %s", exc)
@@ -161,6 +181,17 @@ class ChatCog(commands.Cog):
         cleared = await chat_memory.clear(interaction.guild, interaction.user.id)
         msg = "Done — I've wiped my notes about you. 🧹" if cleared else "I didn't have any notes on you."
         await interaction.response.send_message(msg, ephemeral=True)
+
+    @app_commands.command(name="feelings", description="See how Zafven currently feels about you.")
+    @app_commands.guild_only()
+    async def feelings(self, interaction: discord.Interaction) -> None:
+        import time
+        key = (interaction.guild.id, interaction.user.id)
+        state = self._moods.get(key)
+        if state:
+            emotions.decay(state, state.get("_ts", time.time()), time.time())
+        text = emotions.summary(state) if state else emotions.summary(emotions.new_state())
+        await interaction.response.send_message(f"How I feel about you right now: **{text}**", ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:

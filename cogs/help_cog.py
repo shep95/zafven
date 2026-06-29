@@ -46,6 +46,8 @@ class HelpCog(commands.Cog):
             value=("**@mention Zafven** (or reply to her) to **ask her anything** — she answers "
                    "questions, looks things up, jokes, and banters. She's the resident oracle (she/her).\n"
                    "She **remembers** what you tell her. `/memory` to see it, `/forget` to wipe it.\n"
+                   "She has **moods** — treat her well and she warms up; be rude and she gets dry. "
+                   "`/feelings` shows how she feels about you.\n"
                    "Admins can reshape how she acts with `/persona set` (e.g. 'be concise, more formal')."),
             inline=False)
         embed.add_field(
