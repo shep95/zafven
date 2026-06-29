@@ -29,7 +29,10 @@ _OG_RE_ALT = re.compile(
 
 
 class MediaError(Exception):
-    pass
+    """Carries an optional `link` — the direct media URL, when it's too big to upload."""
+    def __init__(self, message: str, link: str | None = None) -> None:
+        super().__init__(message)
+        self.link = link
 
 
 def _ip_ok(ip_str: str) -> bool:
@@ -84,8 +87,16 @@ async def _fetch(s: aiohttp.ClientSession, url: str, max_bytes: int, depth: int)
             ct = (resp.headers.get("Content-Type") or "").lower()
 
             if ct.startswith(_MEDIA_PREFIXES):
-                data = await _read_capped(resp, max_bytes)
-                return _filename(str(resp.url), ct), data, ct
+                final = str(resp.url)
+                # If the server tells us up front it's too big, skip the download
+                # and hand back the direct link instead.
+                clen = resp.headers.get("Content-Length")
+                if clen and clen.isdigit() and int(clen) > max_bytes:
+                    raise MediaError(
+                        f"That file is {int(clen) // (1024 * 1024)} MB — over the "
+                        f"{max_bytes // (1024 * 1024)} MB upload limit.", link=final)
+                data = await _read_capped(resp, max_bytes, final)
+                return _filename(final, ct), data, ct
 
             if "text/html" in ct or ct == "":
                 html = (await resp.content.read(1_000_000)).decode("utf-8", errors="replace")
@@ -99,12 +110,13 @@ async def _fetch(s: aiohttp.ClientSession, url: str, max_bytes: int, depth: int)
         raise MediaError(f"Couldn't reach that link ({exc.__class__.__name__}).") from exc
 
 
-async def _read_capped(resp: aiohttp.ClientResponse, max_bytes: int) -> bytes:
+async def _read_capped(resp: aiohttp.ClientResponse, max_bytes: int, src_url: str) -> bytes:
     buf = bytearray()
     async for chunk in resp.content.iter_chunked(64 * 1024):
         buf.extend(chunk)
         if len(buf) > max_bytes:
-            raise MediaError(f"That file is over the {max_bytes // (1024 * 1024)} MB upload limit.")
+            raise MediaError(
+                f"That file is over the {max_bytes // (1024 * 1024)} MB upload limit.", link=src_url)
     if not buf:
         raise MediaError("The file was empty.")
     return bytes(buf)

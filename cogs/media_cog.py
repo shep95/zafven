@@ -30,7 +30,12 @@ class MediaCog(commands.Cog):
         try:
             filename, data, ctype = await media.grab(url.strip(), cap)
         except media.MediaError as exc:
-            await interaction.followup.send(f"❌ {exc}")
+            if exc.link:
+                # Too big to upload here — give the direct link to download instead.
+                await interaction.followup.send(
+                    f"📎 {exc} I can't post it here, but you can download it directly:\n{exc.link}")
+            else:
+                await interaction.followup.send(f"❌ {exc}")
             return
         except Exception as exc:  # noqa: BLE001
             log.warning("grab failed: %s", exc)
