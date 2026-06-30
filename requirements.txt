@@ -1,4 +1,4 @@
-discord.py>=2.4.0
+discord.py[voice]>=2.4.0
 python-dotenv>=1.0.0
 # Vedic astrology computations (Swiss Ephemeris).
 pyswisseph>=2.10.3.2

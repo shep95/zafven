@@ -85,6 +85,43 @@ class ModelGateway:
 
         return await self._post_with_retry(payload)
 
+    async def tts(self, text: str, voice: str | None = None) -> tuple[bytes, int]:
+        """Synthesize speech via Gemini TTS. Returns (raw PCM 16-bit LE mono, sample_rate)."""
+        if self._session is None or self._session.closed:
+            await self.start()
+        payload = {
+            "contents": [{"parts": [{"text": text}]}],
+            "generationConfig": {
+                "responseModalities": ["AUDIO"],
+                "speechConfig": {
+                    "voiceConfig": {
+                        "prebuiltVoiceConfig": {"voiceName": voice or config.GEMINI_TTS_VOICE}
+                    }
+                },
+            },
+        }
+        url = f"{config.GEMINI_BASE_URL}/models/{config.GEMINI_TTS_MODEL}:generateContent"
+        assert self._session is not None
+        async with self._session.post(url, json=payload) as resp:
+            if resp.status != 200:
+                raise GatewayError(f"Gemini TTS {resp.status}: {(await resp.text())[:300]}")
+            data = await resp.json()
+        try:
+            part = data["candidates"][0]["content"]["parts"][0]["inlineData"]
+            pcm = base64.b64decode(part["data"])
+        except (KeyError, IndexError, TypeError) as exc:
+            raise GatewayError(f"Malformed Gemini TTS response: {exc}") from exc
+        rate = 24000
+        mime = part.get("mimeType", "")
+        if "rate=" in mime:
+            try:
+                rate = int(mime.split("rate=")[1].split(";")[0])
+            except ValueError:
+                pass
+        if not pcm:
+            raise GatewayError("Gemini TTS returned no audio.")
+        return pcm, rate
+
     def _wants_search(self, web_search: bool | None) -> bool:
         if web_search is True:
             return True

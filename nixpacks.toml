@@ -1,0 +1,3 @@
+# Railway build config. ffmpeg + opus are required for Discord voice playback.
+[phases.setup]
+aptPkgs = ["ffmpeg", "libopus0", "libopus-dev"]

@@ -54,6 +54,12 @@ class HelpCog(commands.Cog):
                    "Admins can reshape how she acts with `/persona set` (e.g. 'be concise, more formal')."),
             inline=False)
         embed.add_field(
+            name="🎙️ Voice",
+            value=("`/vc join` — bring her into your voice channel; she'll **speak her replies** "
+                   "(talk to her in chat, she answers out loud).\n"
+                   "`/say <text>` — say something now · `/vc speak <on/off>` · `/vc leave`"),
+            inline=False)
+        embed.add_field(
             name="🌌 Community & events",
             value=("`/rank [member]` · `/leaderboard` — initiation XP & levels (earn roles by chatting)\n"
                    "`/capsule <message> <deliver_on> [public]` — send a message to the future\n"

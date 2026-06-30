@@ -130,6 +130,13 @@ class ChatCog(commands.Cog):
 
         await self._send(message, textsplit.chunk(visible))
 
+        voice = self.bot.get_cog("VoiceCog")
+        if voice is not None:
+            try:
+                await voice.maybe_speak(message.guild, visible)  # type: ignore[attr-defined]
+            except Exception:  # noqa: BLE001 — voice must never break chat
+                pass
+
         for note in remembered:
             try:
                 await chat_memory.add_note(message.guild, message.author.id, note)

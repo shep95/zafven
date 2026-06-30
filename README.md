@@ -104,6 +104,7 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 | *(daily/weekly)* | A **transit + koan** posts to `#oracle` daily; a weekly **egregore digest** on Mondays |
 | `/report <message_link> [reason]` | Escalate a message to mods — forwards it to `#mod-alerts` and **@mentions the mod role** |
 | `/kick_inactive [days] [dry_run] [message]` | Preview/remove inactive members + reinvite DM (**dry-run by default**, admin-gated) |
+| `/vc join` · `/say <text>` · `/vc speak <on/off>` · `/vc leave` | **Voice** — she joins your VC and speaks (Gemini TTS); with speak-mode on, she voices her chat replies so you type and she answers out loud. (Speaking only — two-way listening needs a voice-receive extension mainline discord.py lacks.) |
 | *(chat)* | **@mention or reply to Zafven to ask her anything** — she answers questions (with web look-up when needed), jokes (real comedy engine), and banters, in character (she/her). She has **live moods** (joy/affection/anger/fear/pride that shift with how you treat her — `/feelings`) and **remembers** what you tell her (`/memory`, `/forget`) |
 | `/persona set\|view\|reset` | **Admins reshape how she acts** (tone/length/formality) — adapts her to the server; safety boundaries stay locked |
 | *(automatic)* | **Welcome card**, leave log, deleted-message log, curse-word censor, anti-spam/scam, anti-cyberbullying, anti-manipulation, **file/image safety scan (NSFW + malware)** |

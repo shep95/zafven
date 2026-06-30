@@ -114,6 +114,11 @@ CHAT_CONTEXT_MESSAGES: int = _int("CHAT_CONTEXT_MESSAGES", 12)
 # Restrict chatting to these channel names (comma-separated). Empty = everywhere.
 CHAT_CHANNELS: list[str] = _csv("CHAT_CHANNELS", "")
 
+# ── Voice (Gemini text-to-speech) ────────────────────────────────────────
+GEMINI_TTS_MODEL: str = os.getenv("GEMINI_TTS_MODEL", "gemini-2.5-flash-preview-tts").strip()
+# Prebuilt Gemini voice (Kore, Puck, Aoede, Leda, Zephyr, Charon, Fenrir, …).
+GEMINI_TTS_VOICE: str = os.getenv("GEMINI_TTS_VOICE", "Kore").strip()
+
 # ── YouTube + knowledge reports ──────────────────────────────────────────
 # Optional YouTube Data API v3 key for /youtube search (real video links).
 YOUTUBE_API_KEY: str = os.getenv("YOUTUBE_API_KEY", "").strip()
