@@ -22,7 +22,8 @@ CODE_MAX_TOKENS = 8000
 
 
 def _system() -> str:
-    return f"{load_brain('persona')}\n\n--- CODE FORGE PROTOCOL ---\n{load_brain('code_forge')}"
+    return (f"{load_brain('persona')}\n\n--- DELIBERATE REASONING ---\n{load_brain('deliberate')}"
+            f"\n\n--- CODE FORGE PROTOCOL ---\n{load_brain('code_forge')}")
 
 
 def _file(text: str, name: str) -> discord.File:
