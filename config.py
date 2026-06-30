@@ -37,6 +37,9 @@ GEMINI_BASE_URL: str = os.getenv(
     "GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta").strip().rstrip("/")
 # Gemini models are multimodal, so one model handles both text and vision.
 GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
+# Live chat uses its own (optionally faster) model so banter stays snappy while
+# readings/research can use a heavier model. Defaults to the main model.
+CHAT_MODEL: str = os.getenv("CHAT_MODEL", "").strip() or GEMINI_MODEL
 GEMINI_MAX_TOKENS: int = _int("GEMINI_MAX_TOKENS", 1200)
 GEMINI_TIMEOUT: int = _int("GEMINI_TIMEOUT", 45)
 # 2.5 models "think" before answering, which can eat the output budget and cut

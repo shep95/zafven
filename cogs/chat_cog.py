@@ -26,6 +26,14 @@ log = logging.getLogger("zafven.chat")
 REMEMBER_RE = re.compile(r"\[\[remember:\s*(.+?)\]\]", re.IGNORECASE | re.DOTALL)
 LEARN_RE = re.compile(r"\[\[learn:\s*(.+?)\]\]", re.IGNORECASE | re.DOTALL)
 
+# Only reach for live web search when the message actually needs current facts —
+# otherwise chat stays fast (search adds 10-30s and can time out).
+SEARCH_HINT_RE = re.compile(
+    r"\b(today|tonight|tomorrow|yesterday|latest|breaking|news|right now|currently|"
+    r"current|nowadays|price|stock|crypto|weather|score|live|release date|came out|"
+    r"just (happened|dropped|released)|this (week|month|year)|who won|how much is|"
+    r"recent(ly)?|update[ds]?|202[4-9]|trending|stats?|standings)\b", re.IGNORECASE)
+
 LEARN_INSTRUCTION = (
     "\n\nLEARNING: If the user corrects a factual mistake you made — or teaches you a "
     "correction to something you got wrong — accept it gracefully (no ego), then end with a "
@@ -157,9 +165,17 @@ class ChatCog(commands.Cog):
                 raw = await self.bot.gateway.narrate(  # type: ignore[attr-defined]
                     self._system(message.author.display_name, notes, directive, mood, vibe, custom,
                                  lessons),
-                    transcript, web_search=None, max_tokens=600)
+                    transcript, web_search=bool(SEARCH_HINT_RE.search(message.content)),
+                    max_tokens=600, model=config.CHAT_MODEL)
         except GatewayError as exc:
             log.warning("chat reply failed: %s", exc)
+            # Don't vanish — let them know she heard them but glitched, so they
+            # don't think she ignored them (the "took 3 tries" complaint).
+            if addressed:
+                try:
+                    await message.add_reaction("💤")
+                except discord.HTTPException:
+                    pass
             return
 
         remembered = REMEMBER_RE.findall(raw)
