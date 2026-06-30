@@ -160,7 +160,26 @@ class ChatCog(commands.Cog):
             except discord.HTTPException:
                 break
 
+    async def _referenced(self, message: discord.Message) -> str:
+        """If this message is a reply, surface the exact message it points to."""
+        ref = message.reference
+        if not ref or not ref.message_id:
+            return ""
+        ref_msg = ref.resolved if isinstance(ref.resolved, discord.Message) else None
+        if ref_msg is None:
+            try:
+                ref_msg = await message.channel.fetch_message(ref.message_id)
+            except discord.HTTPException:
+                return ""
+        if not isinstance(ref_msg, discord.Message):
+            return ""
+        who = "you, Zafven," if ref_msg.author.id == self.bot.user.id else ref_msg.author.display_name
+        body = (ref_msg.content.strip() or "(no text — attachment/embed)")[:1500]
+        return (f"\n\n>>> They REPLIED to this specific message to point you at it — "
+                f"{who}: \"{body}\"\nThat's the context they care about; answer about it.\n")
+
     async def _context(self, message: discord.Message) -> str:
+        ref_block = await self._referenced(message)
         lines: list[str] = []
         try:
             async for msg in message.channel.history(limit=config.CHAT_CONTEXT_MESSAGES, before=message):
@@ -173,7 +192,7 @@ class ChatCog(commands.Cog):
         lines.reverse()
         lines.append(f"{message.author.display_name}: {message.content}")
         convo = "\n".join(lines)[:8000]
-        return (f"This is the recent chat in #{message.channel.name}. "
+        return (f"This is the recent chat in #{message.channel.name}.{ref_block}\n"
                 f"Reply as Zafven to the last message, in character and in context:\n\n{convo}\n\nZafven:")
 
     @app_commands.command(name="memory", description="See what Zafven remembers about you.")
