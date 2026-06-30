@@ -58,6 +58,29 @@ INITIAL_COGS = [
 ]
 
 
+def _load_opus() -> None:
+    """Explicitly load libopus (needed to decode received voice audio).
+
+    discord.py's auto-loader uses find_library, which fails in minimal containers
+    even when libopus is installed — so load it directly by filename.
+    """
+    if discord.opus.is_loaded():
+        return
+    candidates = [
+        "libopus.so.0", "libopus.so", "opus",
+        "/usr/lib/x86_64-linux-gnu/libopus.so.0",
+        "/usr/lib/aarch64-linux-gnu/libopus.so.0",
+    ]
+    for name in candidates:
+        try:
+            discord.opus.load_opus(name)
+            log.info("Loaded libopus via %s", name)
+            return
+        except Exception:  # noqa: BLE001
+            continue
+    log.warning("Could not load libopus — voice *receiving* (/vc listen) won't decode audio.")
+
+
 def build_intents() -> discord.Intents:
     intents = discord.Intents.default()
     intents.members = True
@@ -71,6 +94,7 @@ class Zafven(commands.Bot):
         self.gateway = ModelGateway()
 
     async def setup_hook(self) -> None:
+        _load_opus()
         await self.gateway.start()
         self.tree.on_error = self.on_app_command_error
         for ext in INITIAL_COGS:
