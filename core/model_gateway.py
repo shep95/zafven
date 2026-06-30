@@ -53,6 +53,7 @@ class ModelGateway:
         web_search: bool | None = None,
         max_tokens: int | None = None,
         model: str | None = None,
+        temperature: float | None = None,
     ) -> str:
         """Generate text. `web_search=None` defers to the configured default."""
         if self._session is None or self._session.closed:
@@ -68,7 +69,7 @@ class ModelGateway:
             })
 
         generation_config: dict = {
-            "temperature": 0.85,
+            "temperature": 0.85 if temperature is None else temperature,
             "maxOutputTokens": max_tokens or config.GEMINI_MAX_TOKENS,
         }
         # Disable/limit "thinking" so it doesn't consume the answer's token budget
@@ -90,6 +91,52 @@ class ModelGateway:
             payload["tools"] = [{"google_search": {}}]
 
         return await self._post_with_retry(payload, model=model)
+
+    async def council(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        *,
+        constraints: str = "",
+        candidates: int = 3,
+        web_search: bool | None = None,
+        max_tokens: int | None = None,
+        model: str | None = None,
+    ) -> str:
+        """Superposition & collapse: generate several diverse candidate answers,
+        then run an adversarial oracle that eliminates the weak and ships the
+        single survivor. A real best-of-N with LLM-as-critic selection."""
+        n = max(2, min(candidates, 4))
+        temps = [0.35, 0.8, 1.05, 0.6][:n]
+
+        async def _one(temp: float) -> str:
+            try:
+                return await self.narrate(
+                    system_prompt, user_prompt, web_search=web_search,
+                    max_tokens=max_tokens, model=model, temperature=temp)
+            except GatewayError:
+                return ""
+
+        results = await asyncio.gather(*[_one(t) for t in temps])
+        pool = [c.strip() for c in results if c and c.strip()]
+        if not pool:
+            raise GatewayError("No candidate answers survived generation.")
+        if len(pool) == 1:
+            return pool[0]
+
+        joined = "\n\n".join(f"=== CANDIDATE {i + 1} ===\n{c}" for i, c in enumerate(pool))
+        judge_prompt = (
+            f"USER'S QUESTION:\n{user_prompt}\n\n"
+            f"HARD CONSTRAINTS (must hold):\n{constraints or '(infer them from the question)'}\n\n"
+            f"COMPETING CANDIDATE ANSWERS:\n{joined}\n\n"
+            "Run the collapse: attack each candidate against the question and constraints, "
+            "eliminate the weak or wrong ones, then output ONLY the single strongest final "
+            "answer (merge real strengths if useful). No scorecards, no commentary about the "
+            "candidates — just the surviving answer."
+        )
+        return await self.narrate(
+            system_prompt, judge_prompt, web_search=False,
+            max_tokens=max_tokens, model=model, temperature=0.2)
 
     async def tts(self, text: str, voice: str | None = None) -> tuple[bytes, int]:
         """Synthesize speech via Gemini TTS. Returns (raw PCM 16-bit LE mono, sample_rate)."""

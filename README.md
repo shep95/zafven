@@ -93,6 +93,7 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 | `/sigil <intent>` · `/portrait <name> <date>` | **Generated art** — a personal sigil / numerology frequency portrait (PNG) |
 | `/research <topic>` · `/tldr [count]` · `/askdoc <pdf> <q>` | Live web-research briefing · channel summary · ask a PDF |
 | `/synthesize <question> [domains]` | **Cross-domain research & logic** — strips a question to its structure, pulls governing principles from several distant fields (web-grounded), bridges them, and gives a conclusion no single domain would reach |
+| `/council <question> [constraints]` | **Superposition & collapse** — generates several diverse candidate answers, runs an adversarial oracle that eliminates the weak against your constraints, and ships the single survivor (a real best-of-N; slower but more reliable) |
 | `/youtube <query>` | Find YouTube videos (verified links with `YOUTUBE_API_KEY`, else AI-suggested) |
 | `/grab <link> [spoiler]` | Pull the **image/video** from a link and re-upload it here — SSRF-guarded, size-capped; not a platform ripper. If it's **over the upload limit**, it returns the direct download link instead (bots can't save files to your device) |
 | `/learn <topic \| youtube link>` | Builds a **knowledge report** (web-researched, or from a video transcript) and posts it to a public **#knowledge** channel for friends to learn |

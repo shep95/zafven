@@ -38,6 +38,8 @@ class HelpCog(commands.Cog):
             value=("`/research <topic>` — live web research briefing\n"
                    "`/synthesize <question> [domains]` — **cross-domain** research: bridges multiple "
                    "fields to crack a question (the way the smartest people think)\n"
+                   "`/council <question> [constraints]` — **superposition & collapse**: spawns competing "
+                   "answers, adversarially kills the weak, ships the survivor (slower, but more right)\n"
                    "`/youtube <query>` — find YouTube videos\n"
                    "`/learn <topic|youtube link>` — post a knowledge report to #knowledge\n"
                    "`/grab <link>` — pull an image/video from a link and post it here\n"
