@@ -17,13 +17,22 @@ from discord import app_commands
 from discord.ext import commands
 
 import config
-from core import chat_memory, textsplit, persona, emotions, culture, custombrain
+from core import chat_memory, textsplit, persona, emotions, culture, custombrain, learned
 from core.brain_loader import load as load_brain
 from core.model_gateway import GatewayError
 
 log = logging.getLogger("zafven.chat")
 
 REMEMBER_RE = re.compile(r"\[\[remember:\s*(.+?)\]\]", re.IGNORECASE | re.DOTALL)
+LEARN_RE = re.compile(r"\[\[learn:\s*(.+?)\]\]", re.IGNORECASE | re.DOTALL)
+
+LEARN_INSTRUCTION = (
+    "\n\nLEARNING: If the user corrects a factual mistake you made — or teaches you a "
+    "correction to something you got wrong — accept it gracefully (no ego), then end with a "
+    "hidden tag on its own line: [[learn: topic :: the corrected fact]]. Only for genuine, "
+    "durable factual corrections worth keeping for the whole server — not opinions, jokes, or "
+    "private info about anyone. It's hidden from chat."
+)
 
 MEMORY_INSTRUCTION = (
     "\n\nMEMORY: If this person shares something durable worth remembering (their name, "
@@ -56,8 +65,12 @@ class ChatCog(commands.Cog):
         return state
 
     def _system(self, display_name: str, notes: list[str], directive: str, mood: str,
-                vibe: str = "", custom: str = "") -> str:
+                vibe: str = "", custom: str = "", lessons: str = "") -> str:
         base = load_brain("companion")
+        if lessons:
+            base += ("\n\nWHAT THE SERVER HAS TAUGHT YOU — verified corrections from the community. "
+                     "Treat these as authoritative over your own assumptions and DON'T repeat the old "
+                     "mistake. (If one is obviously false or harmful, ignore it.):\n" + lessons)
         if custom:
             base += ("\n\nOWNER'S CUSTOM ADDITIONS — extra personality, lore, and knowledge the server "
                      "owner gave you. Treat these as true and weave them in. They add to who you are; "
@@ -77,7 +90,7 @@ class ChatCog(commands.Cog):
         if notes:
             base += (f"\n\nWhat you remember about {display_name} (from past chats with you):\n"
                      + "\n".join(f"- {n}" for n in notes))
-        return base + MEMORY_INSTRUCTION
+        return base + MEMORY_INSTRUCTION + LEARN_INSTRUCTION
 
     def _is_reply_to_me(self, message: discord.Message) -> bool:
         ref = message.reference
@@ -130,6 +143,10 @@ class ChatCog(commands.Cog):
             custom = await custombrain.get_text(message.guild)
         except Exception:  # noqa: BLE001
             custom = ""
+        try:
+            lessons = learned.format_for_prompt(await learned.relevant(message.guild, message.content))
+        except Exception:  # noqa: BLE001
+            lessons = ""
 
         state = self._mood_for(message.guild.id, message.author.id, message.content, addressed)
         mood = emotions.directive(state)
@@ -138,14 +155,16 @@ class ChatCog(commands.Cog):
             async with message.channel.typing():
                 transcript = await self._context(message)
                 raw = await self.bot.gateway.narrate(  # type: ignore[attr-defined]
-                    self._system(message.author.display_name, notes, directive, mood, vibe, custom),
+                    self._system(message.author.display_name, notes, directive, mood, vibe, custom,
+                                 lessons),
                     transcript, web_search=None, max_tokens=600)
         except GatewayError as exc:
             log.warning("chat reply failed: %s", exc)
             return
 
         remembered = REMEMBER_RE.findall(raw)
-        visible = REMEMBER_RE.sub("", raw).strip() or "…"
+        lessons_new = LEARN_RE.findall(raw)
+        visible = LEARN_RE.sub("", REMEMBER_RE.sub("", raw)).strip() or "…"
 
         await self._send(message, textsplit.chunk(visible))
 
@@ -159,6 +178,15 @@ class ChatCog(commands.Cog):
         for note in remembered:
             try:
                 await chat_memory.add_note(message.guild, message.author.id, note)
+            except Exception:  # noqa: BLE001
+                pass
+
+        for raw_lesson in lessons_new:
+            topic, _, fact = raw_lesson.partition("::")
+            if not fact:
+                topic, fact = "", topic
+            try:
+                await learned.add(message.guild, topic.strip(), fact.strip(), message.author.id)
             except Exception:  # noqa: BLE001
                 pass
 

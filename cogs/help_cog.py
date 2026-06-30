@@ -52,6 +52,9 @@ class HelpCog(commands.Cog):
                    "She has **moods** — treat her well and she warms up; be rude and she gets dry. "
                    "`/feelings` shows how she feels about you.\n"
                    "She **learns the server's vibe** and blends in (`/culture view`).\n"
+                   "**Correct her** when she's wrong (reply with the right info) and she **files it in "
+                   "her knowledge base** and won't repeat the mistake. `/teach <topic> <fact>` to teach "
+                   "her directly, `/taught` to browse it, `/unlearn` (mods) to prune.\n"
                    "Admins can reshape how she acts with `/persona set`, and add custom "
                    "personality/lore/knowledge with `/brain add` (or `/brain view` the built-ins)."),
             inline=False)

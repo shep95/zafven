@@ -108,6 +108,7 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 | *(chat)* | **@mention or reply to Zafven to ask her anything** — she answers questions (with web look-up when needed), jokes (real comedy engine), and banters, in character (she/her). She has **live moods** (joy/affection/anger/fear/pride that shift with how you treat her — `/feelings`) and **remembers** what you tell her (`/memory`, `/forget`) |
 | `/persona set\|view\|reset` | **Admins reshape how she acts** (tone/length/formality) — adapts her to the server; safety boundaries stay locked |
 | `/brain add\|list\|clear\|view` | **Owner customizes Zafven** — add personality/lore/knowledge that layers into her, or read the built-in brains (additive only; safety lines can't be removed) |
+| `/teach\|taught\|unlearn` | **She learns from corrections** — correct her in chat (or `/teach`) and the fact lands in a per-server knowledge base she pulls into future answers; `/taught` browses it, `/unlearn` (mods) prunes it |
 | `/culture view\|refresh` | She **learns the server's collective vibe** (slang/tone/energy) and blends in — aggregate only, never imitating a specific person or adopting toxic style |
 | *(automatic)* | **Welcome card**, leave log, deleted-message log, curse-word censor, anti-spam/scam, anti-cyberbullying, anti-manipulation, **file/image safety scan (NSFW + malware)** |
 
