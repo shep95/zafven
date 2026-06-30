@@ -34,6 +34,7 @@ INITIAL_COGS = [
     "cogs.synastry_cog",
     "cogs.gematria_cog",
     "cogs.tools_cog",
+    "cogs.synthesize_cog",
     "cogs.forge_cog",
     "cogs.knowledge_cog",
     "cogs.media_cog",
