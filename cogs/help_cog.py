@@ -55,9 +55,10 @@ class HelpCog(commands.Cog):
             inline=False)
         embed.add_field(
             name="🎙️ Voice",
-            value=("`/vc join` — bring her into your voice channel; she'll **speak her replies** "
+            value=("`/vc join` — bring her into your voice channel; she **speaks her replies** "
                    "(talk to her in chat, she answers out loud).\n"
-                   "`/say <text>` — say something now · `/vc speak <on/off>` · `/vc leave`"),
+                   "`/vc listen on` — she **responds to your voice** too (experimental).\n"
+                   "`/say <text>` · `/vc speak <on/off>` · `/vc leave`"),
             inline=False)
         embed.add_field(
             name="🌌 Community & events",
