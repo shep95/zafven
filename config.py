@@ -43,6 +43,10 @@ GEMINI_TIMEOUT: int = _int("GEMINI_TIMEOUT", 45)
 # replies off mid-sentence. 0 disables thinking; -1 = dynamic; >0 = fixed budget.
 GEMINI_THINKING_BUDGET: int = _int("GEMINI_THINKING_BUDGET", 0)
 GEMINI_WEB_SEARCH: str = os.getenv("GEMINI_WEB_SEARCH", "auto").strip().lower()
+# How aggressively Gemini's own filter blocks output. BLOCK_NONE = loosest Gemini
+# allows; BLOCK_ONLY_HIGH still lets edgy content through. "OFF"/"NONE" -> BLOCK_NONE.
+_safety = os.getenv("GEMINI_SAFETY", "BLOCK_ONLY_HIGH").strip().upper()
+GEMINI_SAFETY: str = "BLOCK_NONE" if _safety in {"OFF", "NONE", ""} else _safety
 
 # ── /profile (communication-style read of a member) ──────────────────────
 # Members with any of these roles are exempt and cannot be profiled.

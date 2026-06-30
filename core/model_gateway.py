@@ -80,6 +80,11 @@ class ModelGateway:
             "systemInstruction": {"parts": [{"text": system_prompt}]},
             "contents": [{"role": "user", "parts": parts}],
             "generationConfig": generation_config,
+            "safetySettings": [
+                {"category": c, "threshold": config.GEMINI_SAFETY}
+                for c in ("HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH",
+                          "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT")
+            ],
         }
         if self._wants_search(web_search):
             payload["tools"] = [{"google_search": {}}]
