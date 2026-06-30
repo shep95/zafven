@@ -107,6 +107,7 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 | `/vc join` · `/vc listen on` · `/say <text>` · `/vc speak <on/off>` · `/vc leave` | **Voice** — she joins your VC and speaks (Gemini TTS). `/vc listen on` (experimental, via `discord-ext-voice-recv`) makes her **hear your mic and reply by voice** — your speech goes to Gemini which transcribes + answers, then she speaks it back. |
 | *(chat)* | **@mention or reply to Zafven to ask her anything** — she answers questions (with web look-up when needed), jokes (real comedy engine), and banters, in character (she/her). She has **live moods** (joy/affection/anger/fear/pride that shift with how you treat her — `/feelings`) and **remembers** what you tell her (`/memory`, `/forget`) |
 | `/persona set\|view\|reset` | **Admins reshape how she acts** (tone/length/formality) — adapts her to the server; safety boundaries stay locked |
+| `/culture view\|refresh` | She **learns the server's collective vibe** (slang/tone/energy) and blends in — aggregate only, never imitating a specific person or adopting toxic style |
 | *(automatic)* | **Welcome card**, leave log, deleted-message log, curse-word censor, anti-spam/scam, anti-cyberbullying, anti-manipulation, **file/image safety scan (NSFW + malware)** |
 
 ## Moderation: welcome, anti-spam, profanity

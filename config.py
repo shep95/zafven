@@ -104,6 +104,10 @@ PROFANITY_EXTRA_WORDS: list[str] = _csv("PROFANITY_EXTRA_WORDS", "")
 PROFANITY_BYPASS_MODS: bool = os.getenv("PROFANITY_BYPASS_MODS", "true").strip().lower() in {"1", "true", "yes"}
 
 
+# ── Culture adaptation (learn the server's vibe) ─────────────────────────
+CULTURE_ADAPT_ENABLED: bool = os.getenv("CULTURE_ADAPT_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+CULTURE_REFRESH_HOURS: int = _int("CULTURE_REFRESH_HOURS", 12)
+
 # ── Live chat personality (Zafven) ───────────────────────────────────────
 CHAT_ENABLED: bool = os.getenv("CHAT_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
 # Chance (0.0-1.0) she chimes in on a message that didn't address her. 0 = only

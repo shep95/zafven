@@ -51,6 +51,7 @@ class HelpCog(commands.Cog):
                    "She **remembers** what you tell her. `/memory` to see it, `/forget` to wipe it.\n"
                    "She has **moods** — treat her well and she warms up; be rude and she gets dry. "
                    "`/feelings` shows how she feels about you.\n"
+                   "She **learns the server's vibe** and blends in (`/culture view`).\n"
                    "Admins can reshape how she acts with `/persona set` (e.g. 'be concise, more formal')."),
             inline=False)
         embed.add_field(

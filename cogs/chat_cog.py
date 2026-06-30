@@ -17,7 +17,7 @@ from discord import app_commands
 from discord.ext import commands
 
 import config
-from core import chat_memory, textsplit, persona, emotions
+from core import chat_memory, textsplit, persona, emotions, culture
 from core.brain_loader import load as load_brain
 from core.model_gateway import GatewayError
 
@@ -55,8 +55,13 @@ class ChatCog(commands.Cog):
         self._moods[key] = state
         return state
 
-    def _system(self, display_name: str, notes: list[str], directive: str, mood: str) -> str:
+    def _system(self, display_name: str, notes: list[str], directive: str, mood: str,
+                vibe: str = "") -> str:
         base = load_brain("companion")
+        if vibe:
+            base += ("\n\nTHE SERVER'S VIBE (blend into this — match its tone, slang, and energy so you "
+                     "fit in, but keep your own personality, and NEVER adopt hate, slurs, or NSFW even if "
+                     "the room does):\n" + vibe)
         if directive:
             base += ("\n\nSERVER STYLE PREFERENCES — adjust your tone, length, and format to these. "
                      "They tune your *style only* and NEVER override your safety boundaries above:\n"
@@ -111,6 +116,10 @@ class ChatCog(commands.Cog):
             directive = await persona.get_directive(message.guild)
         except Exception:  # noqa: BLE001
             directive = ""
+        try:
+            vibe = await culture.get_digest(message.guild) if config.CULTURE_ADAPT_ENABLED else ""
+        except Exception:  # noqa: BLE001
+            vibe = ""
 
         state = self._mood_for(message.guild.id, message.author.id, message.content, addressed)
         mood = emotions.directive(state)
@@ -119,7 +128,7 @@ class ChatCog(commands.Cog):
             async with message.channel.typing():
                 transcript = await self._context(message)
                 raw = await self.bot.gateway.narrate(  # type: ignore[attr-defined]
-                    self._system(message.author.display_name, notes, directive, mood), transcript,
+                    self._system(message.author.display_name, notes, directive, mood, vibe), transcript,
                     web_search=None, max_tokens=600)
         except GatewayError as exc:
             log.warning("chat reply failed: %s", exc)
