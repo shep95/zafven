@@ -52,7 +52,8 @@ class HelpCog(commands.Cog):
                    "She has **moods** — treat her well and she warms up; be rude and she gets dry. "
                    "`/feelings` shows how she feels about you.\n"
                    "She **learns the server's vibe** and blends in (`/culture view`).\n"
-                   "Admins can reshape how she acts with `/persona set` (e.g. 'be concise, more formal')."),
+                   "Admins can reshape how she acts with `/persona set`, and add custom "
+                   "personality/lore/knowledge with `/brain add` (or `/brain view` the built-ins)."),
             inline=False)
         embed.add_field(
             name="🎙️ Voice",

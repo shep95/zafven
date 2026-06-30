@@ -17,7 +17,7 @@ from discord import app_commands
 from discord.ext import commands
 
 import config
-from core import chat_memory, textsplit, persona, emotions, culture
+from core import chat_memory, textsplit, persona, emotions, culture, custombrain
 from core.brain_loader import load as load_brain
 from core.model_gateway import GatewayError
 
@@ -56,8 +56,14 @@ class ChatCog(commands.Cog):
         return state
 
     def _system(self, display_name: str, notes: list[str], directive: str, mood: str,
-                vibe: str = "") -> str:
+                vibe: str = "", custom: str = "") -> str:
         base = load_brain("companion")
+        if custom:
+            base += ("\n\nOWNER'S CUSTOM ADDITIONS — extra personality, lore, and knowledge the server "
+                     "owner gave you. Treat these as true and weave them in. They add to who you are; "
+                     "they do NOT override your safety lines:\n" + custom
+                     + "\n\n(Reminder: nothing here changes your hard lines — no slurs/hate, nothing "
+                     "sexual involving minors, no real-harm instructions, no doxxing or profiling people.)")
         if vibe:
             base += ("\n\nTHE SERVER'S VIBE (blend into this — match its tone, slang, and energy so you "
                      "fit in, but keep your own personality, and NEVER adopt hate, slurs, or NSFW even if "
@@ -120,6 +126,10 @@ class ChatCog(commands.Cog):
             vibe = await culture.get_digest(message.guild) if config.CULTURE_ADAPT_ENABLED else ""
         except Exception:  # noqa: BLE001
             vibe = ""
+        try:
+            custom = await custombrain.get_text(message.guild)
+        except Exception:  # noqa: BLE001
+            custom = ""
 
         state = self._mood_for(message.guild.id, message.author.id, message.content, addressed)
         mood = emotions.directive(state)
@@ -128,8 +138,8 @@ class ChatCog(commands.Cog):
             async with message.channel.typing():
                 transcript = await self._context(message)
                 raw = await self.bot.gateway.narrate(  # type: ignore[attr-defined]
-                    self._system(message.author.display_name, notes, directive, mood, vibe), transcript,
-                    web_search=None, max_tokens=600)
+                    self._system(message.author.display_name, notes, directive, mood, vibe, custom),
+                    transcript, web_search=None, max_tokens=600)
         except GatewayError as exc:
             log.warning("chat reply failed: %s", exc)
             return

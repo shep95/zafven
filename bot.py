@@ -45,6 +45,7 @@ INITIAL_COGS = [
     "cogs.chat_cog",
     "cogs.voice_cog",
     "cogs.culture_cog",
+    "cogs.brain_cog",
     "cogs.persona_cog",
     "cogs.logging_cog",
     "cogs.messagelog_cog",
