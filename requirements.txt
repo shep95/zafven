@@ -1,6 +1,7 @@
 discord.py[voice]>=2.4.0
 # Two-way voice (lets her hear/receive audio); mainline discord.py can't.
-discord-ext-voice-recv>=0.4.1
+# This package only ships pre-release builds, so pin an exact alpha version.
+discord-ext-voice-recv==0.5.2a179
 python-dotenv>=1.0.0
 # Vedic astrology computations (Swiss Ephemeris).
 pyswisseph>=2.10.3.2
