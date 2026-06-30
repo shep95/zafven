@@ -52,6 +52,7 @@ class ModelGateway:
         image_mime: str | None = None,
         web_search: bool | None = None,
         max_tokens: int | None = None,
+        model: str | None = None,
     ) -> str:
         """Generate text. `web_search=None` defers to the configured default."""
         if self._session is None or self._session.closed:
@@ -83,7 +84,7 @@ class ModelGateway:
         if self._wants_search(web_search):
             payload["tools"] = [{"google_search": {}}]
 
-        return await self._post_with_retry(payload)
+        return await self._post_with_retry(payload, model=model)
 
     async def tts(self, text: str, voice: str | None = None) -> tuple[bytes, int]:
         """Synthesize speech via Gemini TTS. Returns (raw PCM 16-bit LE mono, sample_rate)."""
@@ -129,8 +130,8 @@ class ModelGateway:
             return False
         return config.GEMINI_WEB_SEARCH in {"auto", "on"}
 
-    async def _post_with_retry(self, payload: dict, attempts: int = 3) -> str:
-        url = f"{config.GEMINI_BASE_URL}/models/{config.GEMINI_MODEL}:generateContent"
+    async def _post_with_retry(self, payload: dict, attempts: int = 3, model: str | None = None) -> str:
+        url = f"{config.GEMINI_BASE_URL}/models/{model or config.GEMINI_MODEL}:generateContent"
         last_err: Exception | None = None
         for attempt in range(1, attempts + 1):
             try:

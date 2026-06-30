@@ -40,9 +40,8 @@ except Exception:  # noqa: BLE001
 
 TTS_CHUNK = 1200
 RECV_RATE = 48000        # voice_recv delivers 48kHz 16-bit stereo PCM
-SILENCE_SEC = 1.2        # gap that marks the end of an utterance
-MIN_SEC = 0.8            # ignore utterances shorter than this
-MIN_BYTES = int(RECV_RATE * 2 * 2 * MIN_SEC)
+SILENCE_SEC = config.VOICE_SILENCE_MS / 1000.0   # gap that marks end of an utterance
+MIN_BYTES = int(RECV_RATE * 2 * 2 * config.VOICE_MIN_MS / 1000.0)
 MAX_BYTES = RECV_RATE * 2 * 2 * 30  # 30s cap per utterance
 
 
@@ -189,7 +188,7 @@ class VoiceCog(commands.Cog):
         except Exception:  # noqa: BLE001 — never raise in the recv thread
             pass
 
-    @tasks.loop(seconds=0.4)
+    @tasks.loop(seconds=0.2)
     async def _flush(self) -> None:
         now = time.time()
         ready: list[tuple[tuple[int, int], bytes]] = []
@@ -217,14 +216,15 @@ class VoiceCog(commands.Cog):
             if guild is None or guild.voice_client is None:
                 return
             wav = voice_audio.pcm_to_wav(pcm, RECV_RATE, channels=2)
-            system = (load_brain("companion") + "\n\nThe user just SPOKE this aloud in a voice call. "
-                      "Understand what they said, then reply as Zafven — short and conversational (1-2 "
-                      "sentences), because your reply is read OUT LOUD. If you can't make out the audio, "
-                      "say you didn't catch that.")
+            system = (load_brain("companion") + "\n\nThis is a live VOICE call — the user just spoke. "
+                      "Reply as Zafven the way a person would in conversation: **one short, natural "
+                      "sentence** (two max), spoken instantly. No lists, no preamble. If you can't make "
+                      "out the audio, just say you didn't catch that.")
             try:
                 reply = await self.bot.gateway.narrate(  # type: ignore[attr-defined]
                     system, "Respond to what they just said.",
-                    image_bytes=wav, image_mime="audio/wav", web_search=False, max_tokens=220)
+                    image_bytes=wav, image_mime="audio/wav", web_search=False,
+                    max_tokens=config.VOICE_REPLY_TOKENS, model=config.VOICE_MODEL)
             except GatewayError as exc:
                 log.warning("voice understand failed: %s", exc)
                 return
