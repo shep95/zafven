@@ -28,6 +28,7 @@ class DiscordStore:
         self.channel: discord.TextChannel | None = None
         self._messages: dict[str, discord.Message] = {}
         self._cache: dict[str, object] = {}
+        self._write_lock = asyncio.Lock()  # serialize writes (no duplicate markers / edit races)
 
     async def init(self) -> None:
         self.channel = await self._get_channel()
@@ -71,17 +72,21 @@ class DiscordStore:
         self._cache[namespace] = data
         if not self.channel:
             return
-        payload = json.dumps(data, ensure_ascii=False)
-        file = discord.File(io.BytesIO(payload.encode("utf-8")), filename=f"{namespace}.json")
         marker = _MARKER.format(ns=namespace)
-        msg = self._messages.get(namespace)
-        try:
-            if msg:
-                self._messages[namespace] = await msg.edit(content=marker, attachments=[file])
-            else:
-                self._messages[namespace] = await self.channel.send(content=marker, file=file)
-        except discord.HTTPException as exc:
-            log.warning("Store write failed (%s): %s", namespace, exc)
+        # Serialize writes: a fresh File is built inside the lock (it's consumed on
+        # send), and reading/creating the marker message stays atomic so concurrent
+        # writers can't spawn duplicate markers or clobber each other's edit.
+        async with self._write_lock:
+            payload = json.dumps(data, ensure_ascii=False)
+            file = discord.File(io.BytesIO(payload.encode("utf-8")), filename=f"{namespace}.json")
+            msg = self._messages.get(namespace)
+            try:
+                if msg:
+                    self._messages[namespace] = await msg.edit(content=marker, attachments=[file])
+                else:
+                    self._messages[namespace] = await self.channel.send(content=marker, file=file)
+            except discord.HTTPException as exc:
+                log.warning("Store write failed (%s): %s", namespace, exc)
 
 
 async def get_store(guild: discord.Guild) -> DiscordStore:
