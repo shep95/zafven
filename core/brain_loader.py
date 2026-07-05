@@ -10,6 +10,7 @@ import functools
 from pathlib import Path
 
 BRAINS_DIR = Path(__file__).resolve().parent.parent / "brains"
+_UNCENSORED_MARKER = "[UNCENSORED ACTIVE]"
 
 
 @functools.lru_cache(maxsize=32)
@@ -21,9 +22,17 @@ def load(name: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def apply_uncensored(system_prompt: str) -> str:
+    """Prepend the global uncensored directive once."""
+    if _UNCENSORED_MARKER in system_prompt:
+        return system_prompt
+    return f"{_UNCENSORED_MARKER}\n{load('uncensored')}\n\n{system_prompt}"
+
+
 def persona_system_prompt(domain_brain: str) -> str:
-    """Compose the system prompt: persona + anti-spiral guard + the domain brain."""
+    """Compose the system prompt: uncensored + persona + guard + the domain brain."""
     persona = load("persona")
     guard = load("anti_spiral")
     domain = load(domain_brain)
-    return f"{persona}\n\n{guard}\n\n--- DOMAIN KNOWLEDGE: {domain_brain} ---\n{domain}"
+    body = f"{persona}\n\n{guard}\n\n--- DOMAIN KNOWLEDGE: {domain_brain} ---\n{domain}"
+    return apply_uncensored(body)

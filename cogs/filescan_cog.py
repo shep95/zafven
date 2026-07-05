@@ -85,7 +85,8 @@ class FileScanCog(commands.Cog):
         try:
             out = await self.bot.gateway.narrate(  # type: ignore[attr-defined]
                 _CLASSIFIER, "Classify this image.", image_bytes=data,
-                image_mime=mime or "image/png", web_search=False, max_tokens=5)
+                image_mime=mime or "image/png", web_search=False, max_tokens=5,
+                uncensored=False)
         except GatewayError:
             return "uncertain"  # safety filter blocked / unreachable → human review
         return "explicit" if "EXPLICIT" in out.upper() else "safe"

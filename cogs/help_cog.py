@@ -19,6 +19,7 @@ class HelpCog(commands.Cog):
                    "`/numerology <full_name> <birth_date>` — solar + lunar numerology\n"
                    "`/zodiac <birth_date>` — Chinese zodiac (year/month/day)\n"
                    "`/predict <question> [birth_date]` — ask the oracle (researches it + reads it)\n"
+                   "`/ask <question>` — ask Zafven anything (direct, uncensored, truthful)\n"
                    "`/vibe [share]` — a playful read of *your own* chat style\n"
                    "`/profile <member> [focus]` — public psychological breakdown from chat history\n"
                    "`/imagine <image> [question]` — describe & interpret an uploaded image\n"
@@ -36,6 +37,7 @@ class HelpCog(commands.Cog):
         embed.add_field(
             name="🧠 Tools",
             value=("`/research <topic>` — live web research briefing\n"
+                   "`/ask <question>` — ask anything, get a direct uncensored answer\n"
                    "`/synthesize <question> [domains]` — **cross-domain** research: bridges multiple "
                    "fields to crack a question (the way the smartest people think)\n"
                    "`/council <question> [constraints]` — **superposition & collapse**: spawns competing "

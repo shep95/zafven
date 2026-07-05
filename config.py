@@ -47,9 +47,11 @@ GEMINI_TIMEOUT: int = _int("GEMINI_TIMEOUT", 45)
 GEMINI_THINKING_BUDGET: int = _int("GEMINI_THINKING_BUDGET", 0)
 GEMINI_WEB_SEARCH: str = os.getenv("GEMINI_WEB_SEARCH", "auto").strip().lower()
 # How aggressively Gemini's own filter blocks output. BLOCK_NONE = loosest Gemini
-# allows; BLOCK_ONLY_HIGH still lets edgy content through. "OFF"/"NONE" -> BLOCK_NONE.
+# allows. "OFF"/"NONE" -> BLOCK_NONE.
 _safety = os.getenv("GEMINI_SAFETY", "BLOCK_NONE").strip().upper()
 GEMINI_SAFETY: str = "BLOCK_NONE" if _safety in {"OFF", "NONE", ""} else _safety
+# Prepend uncensored truth directive to every LLM system prompt (except explicit opt-outs).
+UNCENSORED_MODE: bool = os.getenv("UNCENSORED_MODE", "true").strip().lower() in {"1", "true", "yes"}
 
 # ── /profile (communication-style read of a member) ──────────────────────
 # Members with any of these roles are exempt and cannot be profiled.

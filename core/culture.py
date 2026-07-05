@@ -24,7 +24,7 @@ _PROFILER = (
     "From the message sample, summarize ONLY the shared style: overall tone, energy level, the slang / "
     "catchphrases they actually use, kind of humour, formality, and emoji habits. "
     "AGGREGATE ONLY — never name, quote, describe, or imitate any specific person. "
-    "Do NOT quote or imitate any specific person. Output 4-6 short lines."
+    "Output 4-6 short lines."
 )
 
 
@@ -53,7 +53,8 @@ async def build_digest(bot, guild: discord.Guild) -> bool:
     corpus = "\n".join(snippets)[:40000]
     try:
         digest = await bot.gateway.narrate(  # type: ignore[attr-defined]
-            _PROFILER, f"Server message sample:\n{corpus}", web_search=False, max_tokens=400)
+            _PROFILER, f"Server message sample:\n{corpus}", web_search=False, max_tokens=400,
+            uncensored=False)
     except GatewayError as exc:
         log.warning("culture digest failed in %s: %s", guild.name, exc)
         return False

@@ -17,6 +17,7 @@ import logging
 import aiohttp
 
 import config
+from core.brain_loader import apply_uncensored
 
 log = logging.getLogger("zafven.gateway")
 
@@ -54,10 +55,14 @@ class ModelGateway:
         max_tokens: int | None = None,
         model: str | None = None,
         temperature: float | None = None,
+        uncensored: bool = True,
     ) -> str:
         """Generate text. `web_search=None` defers to the configured default."""
         if self._session is None or self._session.closed:
             await self.start()
+
+        if config.UNCENSORED_MODE and uncensored:
+            system_prompt = apply_uncensored(system_prompt)
 
         parts: list[dict] = [{"text": user_prompt}]
         if image_bytes is not None:

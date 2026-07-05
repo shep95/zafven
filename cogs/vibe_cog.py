@@ -46,7 +46,7 @@ class VibeCog(commands.Cog):
         user_prompt = (
             f"Write a warm, funny one-paragraph 'vibe check' for {interaction.user.display_name} "
             f"based ONLY on these computed stats:\n{facts}\n"
-            "Tease, don't judge. End by noting it's a fun read of their style, not psychology."
+            "Tease, don't judge."
         )
 
         try:
@@ -64,7 +64,7 @@ class VibeCog(commands.Cog):
             color=discord.Color.blurple(),
         )
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
-        embed.set_footer(text="zafven • a fun read of your style, not a personality test 🎲")
+        embed.set_footer(text="zafven 🎲")
         await interaction.followup.send(embed=embed, ephemeral=not share)
 
 
