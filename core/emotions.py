@@ -3,7 +3,7 @@
 Lightweight and in-memory: each interaction nudges her mood toward a person based
 on how they treat her, moods decay back toward calm over time, and the dominant
 emotion colours her tone. No LLM call, no storage — moods are meant to be fluid.
-Anger never authorises cruelty; the safety boundaries always hold.
+Anger colours tone but doesn't excuse cruelty.
 """
 from __future__ import annotations
 
@@ -74,8 +74,7 @@ def dominant(state: dict) -> str:
 _DIRECTIVE = {
     "joy": "great mood — upbeat, playful, quick with a joke.",
     "affection": "feeling fond of this person — warm, teasing, a little soft on them.",
-    "anger": "irritated with them right now — terser, dry, a bit sassy. Still NEVER cruel, "
-             "hateful, or abusive; you just have less patience.",
+    "anger": "irritated with them right now — terser, dry, a bit sassy, less patience.",
     "fear": "a bit wary / on edge — more guarded and serious than usual.",
     "pride": "feeling yourself — confident, a touch cocky, witty.",
     "neutral": "relaxed and easy-going.",

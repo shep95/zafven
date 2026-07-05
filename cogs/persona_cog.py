@@ -1,4 +1,4 @@
-"""/persona — admins tune how Zafven acts (style only; safety stays locked)."""
+"""/persona — admins tune how Zafven acts (style and tone)."""
 from __future__ import annotations
 
 import logging
@@ -30,7 +30,7 @@ class PersonaCog(commands.Cog):
             title="🎭 Persona updated",
             description=f"Zafven will adjust her style to:\n> {directive[:1000]}",
             color=discord.Color.purple())
-        embed.set_footer(text="Style only — her safety boundaries can't be changed.")
+        embed.set_footer(text="Style preferences — fully customizable.")
         await interaction.response.send_message(embed=embed)
         log.info("Persona set in %s by %s", interaction.guild.name, interaction.user)
 

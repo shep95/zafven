@@ -5,8 +5,7 @@ the /teach command), the corrected fact is filed here per guild. On future
 questions the relevant facts are retrieved (keyword overlap) and injected so she
 prefers the community's correction over her own earlier guess.
 
-Additive knowledge only: it never overrides her safety lines, and clearly false
-or harmful "lessons" can be pruned by mods via /unlearn.
+Additive knowledge only; clearly false lessons can be pruned by mods via /unlearn.
 """
 from __future__ import annotations
 

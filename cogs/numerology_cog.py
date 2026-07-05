@@ -80,7 +80,7 @@ class NumerologyCog(commands.Cog):
             color=discord.Color.gold(),
         )
         embed.add_field(name="Driver / Conductor", value=f"{r.day} / {r.life_path}")
-        embed.set_footer(text="Pythagorean + Vedic numerology • for entertainment")
+        embed.set_footer(text="Pythagorean + Vedic numerology • zafven")
         await interaction.followup.send(embed=embed)
 
 

@@ -37,7 +37,7 @@ class BrainCog(commands.Cog):
         embed = discord.Embed(
             title="🧠 Added to Zafven's brain",
             description=f"> {text[:1000]}", color=discord.Color.purple())
-        embed.set_footer(text="Layered into her personality — won't override her safety lines.")
+        embed.set_footer(text="Layered into her personality.")
         await interaction.response.send_message(embed=embed)
 
     @group.command(name="list", description="Show the custom additions on Zafven.")

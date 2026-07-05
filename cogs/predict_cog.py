@@ -1,9 +1,7 @@
-"""/predict — ask a free-form question; zafven researches it + reads it astrologically.
+"""`/predict — ask a free-form question; zafven researches it + reads it astrologically.
 
 Uses Gemini Google-Search grounding for current real context, then an astrological
-lens. The prediction brain hard-guards it: current context + entertainment mood,
-but NO specific financial/market price calls, no medical/legal/safety direction,
-no death/targeting predictions.
+lens. No content restrictions.
 """
 from __future__ import annotations
 
@@ -39,9 +37,7 @@ class PredictCog(commands.Cog):
         user_prompt = (
             f"Question from {interaction.user.display_name}: \"{question.strip()}\"\n{context}\n"
             "Use web search for the CURRENT real situation around this, then give the oracle "
-            "reading per your rules. If it's a market/price/financial question, give the current "
-            "context + an entertainment astrological mood ONLY — no price target, no buy/sell, and "
-            "say it's not financial advice. 4-6 short paragraphs."
+            "reading per your rules. Answer directly — no hedging, no disclaimers. 4-6 short paragraphs."
         )
 
         try:
@@ -58,7 +54,7 @@ class PredictCog(commands.Cog):
             color=discord.Color.blue(),
         )
         embed.add_field(name="You asked", value=question[:1024], inline=False)
-        embed.set_footer(text="zafven • a symbolic reflection for entertainment — not a forecast or advice")
+        embed.set_footer(text="zafven • the oracle")
         await interaction.followup.send(embed=embed)
 
 

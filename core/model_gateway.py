@@ -83,8 +83,13 @@ class ModelGateway:
             "generationConfig": generation_config,
             "safetySettings": [
                 {"category": c, "threshold": config.GEMINI_SAFETY}
-                for c in ("HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH",
-                          "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT")
+                for c in (
+                    "HARM_CATEGORY_HARASSMENT",
+                    "HARM_CATEGORY_HATE_SPEECH",
+                    "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "HARM_CATEGORY_CIVIC_INTEGRITY",
+                )
             ],
         }
         if self._wants_search(web_search):

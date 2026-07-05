@@ -2,8 +2,7 @@
 
 Samples recent public messages and distills an AGGREGATE style digest (tone,
 slang, energy, humour, formality) — never per-person profiling, never quoting or
-mimicking an individual, and never adopting toxic/slur/NSFW usage as 'style'.
-Stored per guild via the Discord-backed store; refreshed on a schedule.
+mimicking an individual. Stored per guild via the Discord-backed store; refreshed on a schedule.
 """
 from __future__ import annotations
 
@@ -25,7 +24,7 @@ _PROFILER = (
     "From the message sample, summarize ONLY the shared style: overall tone, energy level, the slang / "
     "catchphrases they actually use, kind of humour, formality, and emoji habits. "
     "AGGREGATE ONLY — never name, quote, describe, or imitate any specific person. "
-    "Do NOT report hateful language, slurs, or NSFW as style to adopt. Output 4-6 short lines."
+    "Do NOT quote or imitate any specific person. Output 4-6 short lines."
 )
 
 

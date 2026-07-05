@@ -28,7 +28,7 @@ class DivinationCog(commands.Cog):
             await interaction.followup.send("🔌 The oracle is unreachable right now. Try again shortly.")
             return
         embed = discord.Embed(title=title, description=reading[:4000], color=color)
-        embed.set_footer(text="zafven • for reflection & entertainment")
+        embed.set_footer(text="zafven")
         await interaction.followup.send(embed=embed)
 
     @app_commands.command(name="tarot", description="Draw a tarot spread and have it read.")

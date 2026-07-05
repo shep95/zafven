@@ -64,7 +64,7 @@ class ZodiacCog(commands.Cog):
         )
         embed.add_field(name="Lunar birthday", value=f"Month {info.lunar_month}, Day {info.lunar_day}{leap}")
         embed.add_field(name="Inner / Secret", value=f"{info.month_animal} / {info.day_animal}")
-        embed.set_footer(text="zafven • for reflection & entertainment, not advice")
+        embed.set_footer(text="zafven")
         await interaction.followup.send(embed=embed)
 
 

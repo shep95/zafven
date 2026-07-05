@@ -48,7 +48,7 @@ GEMINI_THINKING_BUDGET: int = _int("GEMINI_THINKING_BUDGET", 0)
 GEMINI_WEB_SEARCH: str = os.getenv("GEMINI_WEB_SEARCH", "auto").strip().lower()
 # How aggressively Gemini's own filter blocks output. BLOCK_NONE = loosest Gemini
 # allows; BLOCK_ONLY_HIGH still lets edgy content through. "OFF"/"NONE" -> BLOCK_NONE.
-_safety = os.getenv("GEMINI_SAFETY", "BLOCK_ONLY_HIGH").strip().upper()
+_safety = os.getenv("GEMINI_SAFETY", "BLOCK_NONE").strip().upper()
 GEMINI_SAFETY: str = "BLOCK_NONE" if _safety in {"OFF", "NONE", ""} else _safety
 
 # ── /profile (communication-style read of a member) ──────────────────────
@@ -71,9 +71,9 @@ ANTISPAM_TIMEOUT_SECONDS: int = _int("ANTISPAM_TIMEOUT_SECONDS", 300)
 ANTISPAM_BYPASS_MODS: bool = os.getenv("ANTISPAM_BYPASS_MODS", "true").strip().lower() in {"1", "true", "yes"}
 
 # ── File / image safety scanning ─────────────────────────────────────────
-FILESCAN_ENABLED: bool = os.getenv("FILESCAN_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+FILESCAN_ENABLED: bool = os.getenv("FILESCAN_ENABLED", "false").strip().lower() in {"1", "true", "yes"}
 # NSFW image classification via Gemini vision (costs an API call per image).
-NSFW_SCAN_ENABLED: bool = os.getenv("NSFW_SCAN_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+NSFW_SCAN_ENABLED: bool = os.getenv("NSFW_SCAN_ENABLED", "false").strip().lower() in {"1", "true", "yes"}
 # Don't remove NSFW images in Discord age-gated (NSFW) channels.
 NSFW_ALLOW_IN_NSFW_CHANNELS: bool = os.getenv("NSFW_ALLOW_IN_NSFW_CHANNELS", "true").strip().lower() in {"1", "true", "yes"}
 # Extra blocked file extensions (added to the built-in list).
@@ -84,7 +84,7 @@ FILESCAN_MAX_IMAGE_MB: int = _int("FILESCAN_MAX_IMAGE_MB", 8)
 FILESCAN_BYPASS_MODS: bool = os.getenv("FILESCAN_BYPASS_MODS", "false").strip().lower() in {"1", "true", "yes"}
 
 # ── Anti-manipulation / anti-scam tactics ────────────────────────────────
-ANTIMANIP_ENABLED: bool = os.getenv("ANTIMANIP_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+ANTIMANIP_ENABLED: bool = os.getenv("ANTIMANIP_ENABLED", "false").strip().lower() in {"1", "true", "yes"}
 # Channel where mods get a private alert about flagged messages.
 MOD_ALERT_CHANNEL: str = os.getenv("MOD_ALERT_CHANNEL", "mod-alerts").strip()
 # Roles pinged when an alert fires (comma-separated role names).
@@ -92,7 +92,7 @@ MOD_ROLES: list[str] = _csv("MOD_ROLES", "Moderator,Admin,Mod")
 ANTIMANIP_BYPASS_MODS: bool = os.getenv("ANTIMANIP_BYPASS_MODS", "true").strip().lower() in {"1", "true", "yes"}
 
 # ── Anti-cyberbullying ───────────────────────────────────────────────────
-HARASS_FILTER_ENABLED: bool = os.getenv("HARASS_FILTER_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+HARASS_FILTER_ENABLED: bool = os.getenv("HARASS_FILTER_ENABLED", "false").strip().lower() in {"1", "true", "yes"}
 # How long (seconds) to mute a repeat offender. Default 30 minutes.
 HARASS_MUTE_SECONDS: int = _int("HARASS_MUTE_SECONDS", 1800)
 # How long (seconds) a warning stays "active" before it resets.
@@ -100,7 +100,7 @@ HARASS_WARN_WINDOW_SECONDS: int = _int("HARASS_WARN_WINDOW_SECONDS", 3600)
 HARASS_BYPASS_MODS: bool = os.getenv("HARASS_BYPASS_MODS", "true").strip().lower() in {"1", "true", "yes"}
 
 # ── Profanity filter ─────────────────────────────────────────────────────
-PROFANITY_FILTER_ENABLED: bool = os.getenv("PROFANITY_FILTER_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+PROFANITY_FILTER_ENABLED: bool = os.getenv("PROFANITY_FILTER_ENABLED", "false").strip().lower() in {"1", "true", "yes"}
 # How many curse words in one message before the bot acts. 1 = censor any.
 PROFANITY_THRESHOLD: int = _int("PROFANITY_THRESHOLD", 1)
 # "censor" = delete + repost a starred version; "delete" = delete + brief warning.

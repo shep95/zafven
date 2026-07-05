@@ -7,14 +7,11 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core import vibe
+from core import member_messages, vibe
 from core.brain_loader import persona_system_prompt
 from core.model_gateway import GatewayError
 
 log = logging.getLogger("zafven.vibe")
-
-MAX_MESSAGES = 80
-PER_CHANNEL_SCAN = 400
 
 
 class VibeCog(commands.Cog):
@@ -29,7 +26,7 @@ class VibeCog(commands.Cog):
         guild = interaction.guild
         assert guild is not None
 
-        messages = await self._collect_own_messages(guild, interaction.user)
+        messages = await member_messages.collect(guild, interaction.user)
         if len(messages) < 10:
             await interaction.followup.send(
                 "Not enough of your recent messages to read your vibe (need ~10). Chat more and retry!",
@@ -69,24 +66,6 @@ class VibeCog(commands.Cog):
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
         embed.set_footer(text="zafven • a fun read of your style, not a personality test 🎲")
         await interaction.followup.send(embed=embed, ephemeral=not share)
-
-    async def _collect_own_messages(self, guild: discord.Guild, user: discord.abc.User) -> list[str]:
-        collected: list[str] = []
-        for channel in guild.text_channels:
-            if len(collected) >= MAX_MESSAGES:
-                break
-            perms = channel.permissions_for(guild.me)
-            if not (perms.read_message_history and perms.view_channel):
-                continue
-            try:
-                async for msg in channel.history(limit=PER_CHANNEL_SCAN):
-                    if msg.author.id == user.id and msg.content.strip():
-                        collected.append(msg.content)
-                        if len(collected) >= MAX_MESSAGES:
-                            break
-            except discord.HTTPException:
-                continue
-        return collected
 
 
 async def setup(bot: commands.Bot) -> None:

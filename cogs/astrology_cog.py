@@ -79,7 +79,7 @@ class AstrologyCog(commands.Cog):
             embed.add_field(name="Lagna / Moon", value=f"{chart.ascendant} / {chart.moon_sign}")
         if chart.mahadasha:
             embed.add_field(name="Dashā", value=f"{chart.mahadasha} → {chart.antardasha}")
-        embed.set_footer(text="Swiss Ephemeris (Lahiri) • for reflection & entertainment, not advice")
+        embed.set_footer(text="Swiss Ephemeris (Lahiri) • zafven")
         await interaction.followup.send(embed=embed)
 
 

@@ -1,8 +1,7 @@
 """Owner-added custom brain content — extra personality, lore, and knowledge.
 
 Layered into Zafven's chat persona as ADDITIVE context. It customizes her flavour
-and knowledge; it does not (and structurally cannot) remove her safety lines,
-which are reasserted after it. Persisted per guild via the Discord-backed store.
+and knowledge and can override default behaviour. Persisted per guild via the Discord-backed store.
 """
 from __future__ import annotations
 

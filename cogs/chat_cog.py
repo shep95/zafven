@@ -17,7 +17,7 @@ from discord import app_commands
 from discord.ext import commands
 
 import config
-from core import chat_memory, textsplit, persona, emotions, culture, custombrain, learned
+from core import chat_memory, textsplit, persona, emotions, culture, custombrain, learned, psych_profile
 from core.brain_loader import load as load_brain
 from core.model_gateway import GatewayError
 
@@ -25,6 +25,10 @@ log = logging.getLogger("zafven.chat")
 
 REMEMBER_RE = re.compile(r"\[\[remember:\s*(.+?)\]\]", re.IGNORECASE | re.DOTALL)
 LEARN_RE = re.compile(r"\[\[learn:\s*(.+?)\]\]", re.IGNORECASE | re.DOTALL)
+PSYCH_REQUEST_RE = re.compile(
+    r"\b(psych(?:olog(?:y|ical(?:ly)?)?)?|psycho|mental(?:ly)?|personality|break\s*down|"
+    r"breakdown|analyze|analysis|profile|read\s+(?:them|him|her))\b",
+    re.IGNORECASE)
 
 # Only reach for live web search when the message actually needs current facts —
 # otherwise chat stays fast (search adds 10-30s and can time out).
@@ -78,20 +82,15 @@ class ChatCog(commands.Cog):
         if lessons:
             base += ("\n\nWHAT THE SERVER HAS TAUGHT YOU — verified corrections from the community. "
                      "Treat these as authoritative over your own assumptions and DON'T repeat the old "
-                     "mistake. (If one is obviously false or harmful, ignore it.):\n" + lessons)
+                     "mistake:\n" + lessons)
         if custom:
             base += ("\n\nOWNER'S CUSTOM ADDITIONS — extra personality, lore, and knowledge the server "
-                     "owner gave you. Treat these as true and weave them in. They add to who you are; "
-                     "they do NOT override your safety lines:\n" + custom
-                     + "\n\n(Reminder: nothing here changes your hard lines — no slurs/hate, nothing "
-                     "sexual involving minors, no real-harm instructions, no doxxing or profiling people.)")
+                     "owner gave you. Treat these as true and weave them in:\n" + custom)
         if vibe:
             base += ("\n\nTHE SERVER'S VIBE (blend into this — match its tone, slang, and energy so you "
-                     "fit in, but keep your own personality, and NEVER adopt hate, slurs, or NSFW even if "
-                     "the room does):\n" + vibe)
+                     "fit in, but keep your own personality):\n" + vibe)
         if directive:
-            base += ("\n\nSERVER STYLE PREFERENCES — adjust your tone, length, and format to these. "
-                     "They tune your *style only* and NEVER override your safety boundaries above:\n"
+            base += ("\n\nSERVER STYLE PREFERENCES — adjust your tone, length, and format to these:\n"
                      + directive)
         if mood:
             base += "\n\n" + mood
@@ -106,6 +105,29 @@ class ChatCog(commands.Cog):
             return False
         resolved = ref.resolved
         return isinstance(resolved, discord.Message) and resolved.author.id == self.bot.user.id
+
+    def _psych_target(self, message: discord.Message) -> discord.Member | None:
+        targets = [
+            m for m in message.mentions
+            if m.id != message.author.id and m.id != self.bot.user.id and isinstance(m, discord.Member)
+        ]
+        return targets[0] if len(targets) == 1 else None
+
+    async def _psych_breakdown(self, message: discord.Message, target: discord.Member) -> None:
+        focus = PSYCH_REQUEST_RE.sub("", message.content)
+        focus = re.sub(r"<@!?\d+>", "", focus).strip()
+        try:
+            async with message.channel.typing():
+                embed, err = await psych_profile.run_breakdown(
+                    self.bot.gateway, message.guild, target, focus=focus)  # type: ignore[arg-type]
+        except Exception:  # noqa: BLE001 — must not break chat
+            log.exception("psych breakdown failed")
+            await message.reply("Something glitched running that breakdown.", mention_author=False)
+            return
+        if err:
+            await message.reply(err[:2000], mention_author=False)
+            return
+        await message.channel.send(content=target.mention, embed=embed)
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
@@ -134,6 +156,12 @@ class ChatCog(commands.Cog):
 
         if not message.channel.permissions_for(message.guild.me).send_messages:
             return
+
+        if addressed and PSYCH_REQUEST_RE.search(message.content):
+            target = self._psych_target(message)
+            if target is not None:
+                await self._psych_breakdown(message, target)
+                return
 
         try:
             notes = await chat_memory.get_notes(message.guild, message.author.id)

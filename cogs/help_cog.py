@@ -14,13 +14,13 @@ class HelpCog(commands.Cog):
     async def help(self, interaction: discord.Interaction) -> None:
         embed = discord.Embed(title="🜲 zafven — commands", color=discord.Color.dark_purple())
         embed.add_field(
-            name="🔮 Readings (LLM-narrated, entertainment)",
+            name="🔮 Readings (LLM-narrated)",
             value=("`/vedic <birth_date> <birth_time> <birth_place>` — full Vedic chart + dashā\n"
                    "`/numerology <full_name> <birth_date>` — solar + lunar numerology\n"
                    "`/zodiac <birth_date>` — Chinese zodiac (year/month/day)\n"
                    "`/predict <question> [birth_date]` — ask the oracle (researches it + reads it)\n"
                    "`/vibe [share]` — a playful read of *your own* chat style\n"
-                   "`/profile <member>` — public, for-fun read of a member's chat style (not psychology)\n"
+                   "`/profile <member> [focus]` — public psychological breakdown from chat history\n"
                    "`/imagine <image> [question]` — describe & interpret an uploaded image\n"
                    "`/synastry <name_a> <date_a> <name_b> <date_b>` — compatibility reading"),
             inline=False)
@@ -88,7 +88,7 @@ class HelpCog(commands.Cog):
                    "invite & scam links) is auto-removed.\n"
                    "**Cyberbullying** is warned once, then muted 30 min if it continues."),
             inline=False)
-        embed.set_footer(text="Readings are for reflection & entertainment, not advice.")
+        embed.set_footer(text="zafven")
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
 
