@@ -29,6 +29,7 @@ class Track:
     uploader: str
     thumbnail: str | None
     requester: str         # display name of whoever queued it
+    requester_id: int = 0  # their Discord user id (for self-skip / DJ checks)
 
 
 def _ytdl_opts() -> dict:
@@ -62,7 +63,7 @@ def _extract(query: str) -> dict | None:
     return info
 
 
-async def resolve(query: str, requester: str) -> Track | None:
+async def resolve(query: str, requester: str, requester_id: int = 0) -> Track | None:
     """Return a playable Track for a URL or search string, or None if nothing found."""
     try:
         info = await asyncio.to_thread(_extract, query)
@@ -79,6 +80,7 @@ async def resolve(query: str, requester: str) -> Track | None:
         uploader=info.get("uploader") or info.get("channel") or "",
         thumbnail=info.get("thumbnail"),
         requester=requester,
+        requester_id=requester_id,
     )
 
 

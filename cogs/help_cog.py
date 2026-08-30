@@ -79,8 +79,10 @@ class HelpCog(commands.Cog):
                    "`/loop track|queue|off` — repeat one song or the whole queue.\n"
                    "`/queue` · `/shuffle` · `/remove <n>` · `/clear` · `/nowplaying`\n"
                    "`/skip` · `/pause` · `/resume` · `/volume <0-200>` · `/stop` (stop + leave)\n"
+                   "`/247 on` — **24/7 mode**: she stays in the channel and rejoins after a restart.\n"
                    "While music is playing the VC stays **music-only** (she won't talk over it), "
-                   "and she auto-leaves when the channel empties."),
+                   "and she auto-leaves when the channel empties. With a **DJ role** set, only DJs/"
+                   "mods (or the song's requester) can skip/stop others' music."),
             inline=False)
         embed.add_field(
             name="🌌 Community & events",

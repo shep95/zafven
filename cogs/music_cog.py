@@ -20,13 +20,16 @@ from discord import app_commands
 from discord.ext import commands
 
 import config
-from core import music
+from core import music, store
 
 log = logging.getLogger("zafven.music")
 
+_NS_247 = "music_247"   # store namespace: {"channel_id": int} per guild
+
 
 class _GuildState:
-    __slots__ = ("queue", "current", "lock", "channel_id", "volume", "loop_mode", "skip_flag")
+    __slots__ = ("queue", "current", "lock", "channel_id", "volume", "loop_mode",
+                 "skip_flag", "stay", "home_channel_id")
 
     def __init__(self) -> None:
         self.queue: collections.deque[music.Track] = collections.deque()
@@ -36,6 +39,8 @@ class _GuildState:
         self.volume: float = 1.0
         self.loop_mode: str = "off"          # off | track | queue
         self.skip_flag: bool = False         # set by /skip so a loop doesn't replay it
+        self.stay: bool = False              # 24/7 mode — stay in the VC + rejoin
+        self.home_channel_id: int | None = None  # the VC to hold / rejoin in 24/7 mode
 
 
 class MusicError(Exception):
@@ -54,6 +59,30 @@ class MusicCog(commands.Cog):
         """True if music is playing or queued — used to keep the VC music-only."""
         st = self._states.get(guild_id)
         return bool(st and (st.current is not None or st.queue))
+
+    def _can_control(self, interaction: discord.Interaction, *, allow_requester: bool = False) -> bool:
+        """DJ gate: with MUSIC_DJ_ROLE set, only DJs/mods (or, optionally, the
+        requester of the current song) may run control commands. Blank = open."""
+        dj = config.MUSIC_DJ_ROLE.strip()
+        if not dj:
+            return True
+        member = interaction.user
+        if isinstance(member, discord.Member):
+            perms = member.guild_permissions
+            if perms.manage_guild or perms.manage_channels:
+                return True
+            if any(r.name.lower() == dj.lower() for r in member.roles):
+                return True
+        if allow_requester:
+            st = self._states.get(interaction.guild.id)
+            if st and st.current and st.current.requester_id == member.id:
+                return True
+        return False
+
+    async def _deny(self, interaction: discord.Interaction) -> None:
+        await interaction.response.send_message(
+            f"🎧 that's DJ-only — you need the **{config.MUSIC_DJ_ROLE}** role (or mod perms).",
+            ephemeral=True)
 
     async def _connect(self, interaction: discord.Interaction):
         """Join the caller's voice channel (or move to it). Returns (vc, error)."""
@@ -164,7 +193,8 @@ class MusicCog(commands.Cog):
             await interaction.followup.send(f"❌ the queue is full ({config.MUSIC_MAX_QUEUE}).")
             return
 
-        track = await music.resolve(query.strip(), requester=interaction.user.display_name)
+        track = await music.resolve(query.strip(), requester=interaction.user.display_name,
+                                     requester_id=interaction.user.id)
         if track is None:
             await interaction.followup.send(
                 "❌ couldn't find or load that. try a different link or search — if this keeps "
@@ -208,6 +238,9 @@ class MusicCog(commands.Cog):
     ])
     @app_commands.guild_only()
     async def loop(self, interaction: discord.Interaction, mode: app_commands.Choice[str]) -> None:
+        if not self._can_control(interaction):
+            await self._deny(interaction)
+            return
         self._state(interaction.guild.id).loop_mode = mode.value
         label = {"off": "off", "track": "🔂 repeating this song", "queue": "🔁 repeating the whole queue"}[mode.value]
         await interaction.response.send_message(f"loop: **{label}**.")
@@ -215,6 +248,9 @@ class MusicCog(commands.Cog):
     @app_commands.command(name="shuffle", description="Shuffle the songs waiting in the queue.")
     @app_commands.guild_only()
     async def shuffle(self, interaction: discord.Interaction) -> None:
+        if not self._can_control(interaction):
+            await self._deny(interaction)
+            return
         import random
         state = self._state(interaction.guild.id)
         if len(state.queue) < 2:
@@ -229,6 +265,9 @@ class MusicCog(commands.Cog):
     @app_commands.describe(position="The number shown in /queue.")
     @app_commands.guild_only()
     async def remove(self, interaction: discord.Interaction, position: int) -> None:
+        if not self._can_control(interaction):
+            await self._deny(interaction)
+            return
         state = self._state(interaction.guild.id)
         if position < 1 or position > len(state.queue):
             await interaction.response.send_message("no song at that position — check `/queue`.", ephemeral=True)
@@ -241,6 +280,9 @@ class MusicCog(commands.Cog):
     @app_commands.command(name="clear", description="Clear the queue (keeps the current song playing).")
     @app_commands.guild_only()
     async def clear(self, interaction: discord.Interaction) -> None:
+        if not self._can_control(interaction):
+            await self._deny(interaction)
+            return
         state = self._state(interaction.guild.id)
         n = len(state.queue)
         state.queue.clear()
@@ -249,6 +291,9 @@ class MusicCog(commands.Cog):
     @app_commands.command(name="skip", description="Skip the current song.")
     @app_commands.guild_only()
     async def skip(self, interaction: discord.Interaction) -> None:
+        if not self._can_control(interaction, allow_requester=True):
+            await self._deny(interaction)
+            return
         vc = interaction.guild.voice_client
         if vc is None or not (vc.is_playing() or vc.is_paused()):
             await interaction.response.send_message("nothing is playing.", ephemeral=True)
@@ -260,6 +305,9 @@ class MusicCog(commands.Cog):
     @app_commands.command(name="pause", description="Pause playback.")
     @app_commands.guild_only()
     async def pause(self, interaction: discord.Interaction) -> None:
+        if not self._can_control(interaction):
+            await self._deny(interaction)
+            return
         vc = interaction.guild.voice_client
         if vc is None or not vc.is_playing():
             await interaction.response.send_message("nothing is playing.", ephemeral=True)
@@ -270,6 +318,9 @@ class MusicCog(commands.Cog):
     @app_commands.command(name="resume", description="Resume a paused song.")
     @app_commands.guild_only()
     async def resume(self, interaction: discord.Interaction) -> None:
+        if not self._can_control(interaction):
+            await self._deny(interaction)
+            return
         vc = interaction.guild.voice_client
         if vc is None or not vc.is_paused():
             await interaction.response.send_message("nothing is paused.", ephemeral=True)
@@ -281,6 +332,9 @@ class MusicCog(commands.Cog):
     @app_commands.describe(percent="Volume percent, 0-200. Default 100.")
     @app_commands.guild_only()
     async def volume(self, interaction: discord.Interaction, percent: int) -> None:
+        if not self._can_control(interaction):
+            await self._deny(interaction)
+            return
         percent = max(0, min(percent, 200))
         state = self._state(interaction.guild.id)
         state.volume = percent / 100
@@ -322,9 +376,14 @@ class MusicCog(commands.Cog):
     @app_commands.command(name="stop", description="Stop the music, clear the queue, and leave the channel.")
     @app_commands.guild_only()
     async def stop(self, interaction: discord.Interaction) -> None:
+        if not self._can_control(interaction):
+            await self._deny(interaction)
+            return
         state = self._state(interaction.guild.id)
         state.queue.clear()
         state.current = None
+        state.stay = False   # stop overrides 24/7 — we're actually leaving
+        await self._save_247(interaction.guild, None)
         vc = interaction.guild.voice_client
         if vc is not None:
             try:
@@ -337,19 +396,95 @@ class MusicCog(commands.Cog):
         else:
             await interaction.response.send_message("i'm not in a voice channel.", ephemeral=True)
 
+    @app_commands.command(name="247", description="24/7 mode: keep the bot in the voice channel and rejoin after restarts.")
+    @app_commands.describe(on="True to stay 24/7, False to turn it off.")
+    @app_commands.guild_only()
+    async def stay247(self, interaction: discord.Interaction, on: bool) -> None:
+        if not config.MUSIC_247_ALLOWED:
+            await interaction.response.send_message("24/7 mode is disabled on this server.", ephemeral=True)
+            return
+        if not self._can_control(interaction):
+            await self._deny(interaction)
+            return
+        state = self._state(interaction.guild.id)
+        if on:
+            vc, err = await self._connect(interaction)
+            if err:
+                await interaction.response.send_message(f"❌ {err}", ephemeral=True)
+                return
+            state.stay = True
+            state.home_channel_id = vc.channel.id
+            await self._save_247(interaction.guild, vc.channel.id)
+            await interaction.response.send_message(
+                f"📌 **24/7 on** — I'll stay in **{vc.channel.name}** and rejoin if I restart or get dropped.")
+        else:
+            state.stay = False
+            state.home_channel_id = None
+            await self._save_247(interaction.guild, None)
+            await interaction.response.send_message(
+                "📌 **24/7 off** — I'll leave when the music stops or the channel empties.")
+
+    # ── 24/7 persistence + auto-rejoin ───────────────────────────────────
+    async def _save_247(self, guild: discord.Guild, channel_id: int | None) -> None:
+        try:
+            s = await store.get_store(guild)
+            await s.set(_NS_247, {"channel_id": channel_id} if channel_id else {})
+        except Exception:  # noqa: BLE001 — persistence is best-effort
+            log.exception("failed to persist 24/7 state")
+
+    async def _rejoin(self, guild: discord.Guild) -> None:
+        """Reconnect to the saved 24/7 channel if we're not already connected there."""
+        state = self._state(guild.id)
+        cid = state.home_channel_id
+        if not cid:
+            return
+        channel = guild.get_channel(cid)
+        if not isinstance(channel, discord.VoiceChannel):
+            return
+        vc = guild.voice_client
+        try:
+            if vc is None:
+                await channel.connect()
+            elif vc.channel.id != cid:
+                await vc.move_to(channel)
+        except (discord.ClientException, discord.HTTPException, asyncio.TimeoutError) as exc:
+            log.info("24/7 rejoin failed in %s: %s", guild.id, exc)
+
+    @commands.Cog.listener()
+    async def on_ready(self) -> None:
+        """Restore 24/7 sessions after a (re)start."""
+        for guild in self.bot.guilds:
+            try:
+                s = await store.get_store(guild)
+                cid = (s.get(_NS_247, {}) or {}).get("channel_id")
+            except Exception:  # noqa: BLE001
+                cid = None
+            if cid:
+                state = self._state(guild.id)
+                state.stay = True
+                state.home_channel_id = int(cid)
+                await self._rejoin(guild)
+
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState,
                                     after: discord.VoiceState) -> None:
-        """Auto-leave and reset when the bot is disconnected or left alone."""
         if member.guild is None:
             return
+        state = self._state(member.guild.id)
+
+        # The bot itself was disconnected/moved (kicked, dragged, network drop).
+        if member.id == self.bot.user.id:
+            if state.stay and before.channel is not None and after.channel is None:
+                await asyncio.sleep(2)  # let Discord settle, then rejoin
+                await self._rejoin(member.guild)
+            return
+
         vc = member.guild.voice_client
         if vc is None:
             return
-        # Everyone else left the bot's channel → clean up.
+        # Everyone else left the bot's channel.
         humans = [m for m in vc.channel.members if not m.bot]
-        if not humans:
-            state = self._state(member.guild.id)
+        if not humans and not state.stay:   # 24/7 mode keeps her parked
             state.queue.clear()
             state.current = None
             try:
