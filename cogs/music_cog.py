@@ -103,9 +103,11 @@ class MusicCog(commands.Cog):
             if vc and vc.channel == channel:
                 return vc, None
             if vc:
-                await vc.move_to(channel)
+                await asyncio.wait_for(vc.move_to(channel), timeout=20)
                 return vc, None
-            return await channel.connect(), None
+            return await channel.connect(timeout=20.0, reconnect=True), None
+        except asyncio.TimeoutError:
+            return None, "voice connection timed out — try again in a moment."
         except discord.ClientException as exc:
             return None, f"couldn't join ({exc})."
         except Exception as exc:  # noqa: BLE001 — PyNaCl/ffmpeg missing, etc.
@@ -387,22 +389,24 @@ class MusicCog(commands.Cog):
         if not self._can_control(interaction):
             await self._deny(interaction)
             return
+        await interaction.response.defer()
         state = self._state(interaction.guild.id)
         state.queue.clear()
         state.current = None
         state.stay = False   # stop overrides 24/7 — we're actually leaving
+        state.home_channel_id = None
         await self._save_247(interaction.guild, None)
         vc = interaction.guild.voice_client
         if vc is not None:
             try:
                 if vc.is_playing() or vc.is_paused():
                     vc.stop()
-                await vc.disconnect(force=True)
-            except discord.HTTPException:
+                await asyncio.wait_for(vc.disconnect(force=True), timeout=15)
+            except (discord.HTTPException, asyncio.TimeoutError):
                 pass
-            await interaction.response.send_message("⏹️ stopped and left the channel.")
+            await interaction.followup.send("⏹️ stopped and left the channel.")
         else:
-            await interaction.response.send_message("i'm not in a voice channel.", ephemeral=True)
+            await interaction.followup.send("i'm not in a voice channel.")
 
     @app_commands.command(name="247", description="24/7 mode: keep the bot in the voice channel and rejoin after restarts.")
     @app_commands.describe(on="True to stay 24/7, False to turn it off.")
@@ -414,22 +418,24 @@ class MusicCog(commands.Cog):
         if not self._can_control(interaction):
             await self._deny(interaction)
             return
+        # Connecting + the store write can take >3s — defer so we never miss the ack.
+        await interaction.response.defer(thinking=True)
         state = self._state(interaction.guild.id)
         if on:
             vc, err = await self._connect(interaction)
             if err:
-                await interaction.response.send_message(f"❌ {err}", ephemeral=True)
+                await interaction.followup.send(f"❌ {err}")
                 return
             state.stay = True
             state.home_channel_id = vc.channel.id
             await self._save_247(interaction.guild, vc.channel.id)
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"📌 **24/7 on** — I'll stay in **{vc.channel.name}** and rejoin if I restart or get dropped.")
         else:
             state.stay = False
             state.home_channel_id = None
             await self._save_247(interaction.guild, None)
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "📌 **24/7 off** — I'll leave when the music stops or the channel empties.")
 
     # ── 24/7 persistence + auto-rejoin ───────────────────────────────────

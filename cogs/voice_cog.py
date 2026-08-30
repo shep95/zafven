@@ -106,17 +106,23 @@ class VoiceCog(commands.Cog):
     @app_commands.guild_only()
     async def leave(self, interaction: discord.Interaction) -> None:
         client = interaction.guild.voice_client
-        if client:
-            with self._buf_lock:
-                for k in [k for k in self._buffers if k[0] == interaction.guild.id]:
-                    self._buffers.pop(k, None)
-                    self._last.pop(k, None)
-            await client.disconnect(force=True)
-            self._speak.pop(interaction.guild.id, None)
-            self._listen.pop(interaction.guild.id, None)
-            await interaction.response.send_message("👋 Left the call.", ephemeral=True)
-        else:
+        if not client:
             await interaction.response.send_message("I'm not in a call.", ephemeral=True)
+            return
+        # Defer first — disconnecting a wedged voice socket can take >3s and would
+        # otherwise blow the interaction's ack deadline ("application did not respond").
+        await interaction.response.defer(ephemeral=True)
+        with self._buf_lock:
+            for k in [k for k in self._buffers if k[0] == interaction.guild.id]:
+                self._buffers.pop(k, None)
+                self._last.pop(k, None)
+        try:
+            await asyncio.wait_for(client.disconnect(force=True), timeout=15)
+        except (discord.HTTPException, asyncio.TimeoutError):
+            pass
+        self._speak.pop(interaction.guild.id, None)
+        self._listen.pop(interaction.guild.id, None)
+        await interaction.followup.send("👋 Left the call.", ephemeral=True)
 
     @vc.command(name="speak", description="Toggle whether Zafven speaks her chat replies in the call.")
     @app_commands.describe(on="True to speak replies aloud, False to stay quiet.")
