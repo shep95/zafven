@@ -166,6 +166,10 @@ with **Manage Messages** are exempt by default; extend the word list via
 `PROFANITY_EXTRA_WORDS`. Needs **Manage Messages** (delete) and **Moderate Members**
 (timeout).
 
+Strikes are **persisted per guild** in the `zafven-data` channel, so they survive
+restarts. Mods can `/strikes check @member` to see a member's current strikes and
+`/strikes clear @member` to wipe them.
+
 ## Quick start (local)
 
 ```bash

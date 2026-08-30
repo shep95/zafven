@@ -86,8 +86,10 @@ class HelpCog(commands.Cog):
                    "`/report <message_link> [reason]` — escalate a message to the mods\n"
                    "New members get a **welcome card**; leaves are logged.\n"
                    "**Deleted messages** are logged (who/when/reply) for mods.\n"
-                   "Curse words are auto-censored; spam/scam (floods, mass-mentions, "
-                   "invite & scam links) is auto-removed.\n"
+                   "**Banned language** (curse words, hate slurs, sexual slang) is auto-removed "
+                   "with a warning; **3 strikes in an hour → 15-min mute** "
+                   "(`/strikes check|clear @member` for mods).\n"
+                   "Spam/scam (floods, mass-mentions, invite & scam links) is auto-removed.\n"
                    "**Cyberbullying** is warned once, then muted 30 min if it continues."),
             inline=False)
         embed.set_footer(text="zafven")
