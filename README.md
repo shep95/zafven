@@ -108,7 +108,17 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 | `/report <message_link> [reason]` | Escalate a message to mods — forwards it to `#mod-alerts` and **@mentions the mod role** |
 | `/kick_inactive [days] [dry_run] [message]` | Preview/remove inactive members + reinvite DM (**dry-run by default**, admin-gated) |
 | `/vc join` · `/say <text>` · `/vc speak <on/off>` · `/vc leave` | **Voice** — she joins your VC and speaks her replies (Gemini TTS) using the standard voice client. (The old experimental mic-listening mode was removed — its alpha voice-receive client hung connections.) |
-| `/play <link/search>` · `/playnext` · `/loop track\|queue\|off` · `/queue` · `/shuffle` · `/remove` · `/clear` · `/nowplaying` · `/skip` · `/pause` · `/resume` · `/volume` · `/247 <on/off>` · `/stop` | **Music** — joins your VC and streams audio from YouTube (via `yt-dlp` → FFmpeg) with a per-guild queue. `/playnext` jumps the line; `/loop` repeats a song or the whole queue (radio-style); `/247` keeps her parked in the channel and **rejoins after a restart** (persisted); the VC stays **music-only** (TTS won't talk over it) and she auto-leaves when the channel empties. Set a **`MUSIC_DJ_ROLE`** to restrict skip/stop/etc. to DJs and mods (the requester can always skip their own track). On datacenter hosts YouTube may need a `MUSIC_COOKIE_FILE` (cookies.txt). |
+| `/play <link/search>` · `/playnext` · `/loop track\|queue\|off` · `/queue` · `/shuffle` · `/remove` · `/clear` · `/nowplaying` · `/skip` · `/pause` · `/resume` · `/volume` · `/247 <on/off>` · `/stop` | **Music** — joins your VC and streams audio from YouTube (via `yt-dlp` → FFmpeg) with a per-guild queue. `/playnext` jumps the line; `/loop` repeats a song or the whole queue (radio-style); `/247` keeps her parked in the channel and **rejoins after a restart** (persisted); the VC stays **music-only** (TTS won't talk over it) and she auto-leaves when the channel empties. Set a **`MUSIC_DJ_ROLE`** to restrict skip/stop/etc. to DJs and mods (the requester can always skip their own track). On datacenter hosts YouTube may need cookies — see below. |
+
+> **Making music work on a hosted bot (Railway):** YouTube blocks datacenter IPs
+> with a "sign in to confirm you're not a bot" check, so `/play` may fail with a
+> bot-check message. Fix it with cookies: export a `cookies.txt` from a browser
+> logged in to YouTube (e.g. the *Get cookies.txt LOCALLY* extension) and either
+> set `MUSIC_COOKIE_FILE` to its path **or** paste the whole file's contents into
+> `MUSIC_COOKIES` (written to a temp file at runtime — easiest on Railway). Use a
+> throwaway Google account, since cookies grant account access. The resolver
+> already tries several player clients (`default → ios → tv → android → web`)
+> before giving up.
 | *(chat)* | **@mention or reply to Zafven to ask her anything** — she answers questions (with web look-up when needed), jokes (real comedy engine), and banters, in character (she/her). She has **live moods** (joy/affection/anger/fear/pride that shift with how you treat her — `/feelings`) and **remembers** what you tell her (`/memory`, `/forget`) |
 | `/persona set\|view\|reset` | **Admins reshape how she acts** (tone/length/formality) — adapts her to the server; safety boundaries stay locked |
 | `/brain add\|list\|clear\|view` | **Owner customizes Zafven** — add personality/lore/knowledge that layers into her, or read the built-in brains (additive only; safety lines can't be removed) |

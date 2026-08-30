@@ -203,12 +203,10 @@ class MusicCog(commands.Cog):
             await interaction.followup.send(f"❌ the queue is full ({config.MUSIC_MAX_QUEUE}).")
             return
 
-        track = await music.resolve(query.strip(), requester=interaction.user.display_name,
-                                     requester_id=interaction.user.id)
+        track, reason = await music.resolve(query.strip(), requester=interaction.user.display_name,
+                                            requester_id=interaction.user.id)
         if track is None:
-            await interaction.followup.send(
-                "❌ couldn't find or load that. try a different link or search — if this keeps "
-                "happening on a hosted bot, YouTube may need a `MUSIC_COOKIE_FILE`.")
+            await interaction.followup.send(f"❌ {music.friendly_error(reason)}")
             return
 
         state.channel_id = interaction.channel_id

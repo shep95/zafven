@@ -124,6 +124,9 @@ MUSIC_MAX_QUEUE: int = _int("MUSIC_MAX_QUEUE", 100)
 # Optional path to a cookies.txt export — lets yt-dlp past YouTube's "sign in to
 # confirm you're not a bot" checks that hit datacenter IPs (e.g. on Railway).
 MUSIC_COOKIE_FILE: str = os.getenv("MUSIC_COOKIE_FILE", "").strip()
+# Easier on hosts with no filesystem: paste the whole cookies.txt CONTENT here and
+# it's written to a temp file at runtime. MUSIC_COOKIE_FILE takes precedence.
+MUSIC_COOKIES: str = os.getenv("MUSIC_COOKIES", "")
 # Optional role name that gates the control commands (skip/stop/pause/loop/…) so
 # only DJs (or mods) can touch others' music. Blank = anyone can control.
 MUSIC_DJ_ROLE: str = os.getenv("MUSIC_DJ_ROLE", "").strip()

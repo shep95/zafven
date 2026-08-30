@@ -9,11 +9,36 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import tempfile
 from dataclasses import dataclass
 
 import config
 
 log = logging.getLogger("zafven.music")
+
+_cookie_tmp: str | None = None  # cached temp cookies file written from MUSIC_COOKIES
+
+
+def _cookie_path() -> str:
+    """A cookies.txt path from MUSIC_COOKIE_FILE, or one written from MUSIC_COOKIES."""
+    global _cookie_tmp
+    if config.MUSIC_COOKIE_FILE:
+        return config.MUSIC_COOKIE_FILE
+    content = config.MUSIC_COOKIES.strip()
+    if not content:
+        return ""
+    if _cookie_tmp and os.path.exists(_cookie_tmp):
+        return _cookie_tmp
+    try:
+        fd, path = tempfile.mkstemp(suffix=".txt", prefix="ytcookies_")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content if content.endswith("\n") else content + "\n")
+        _cookie_tmp = path
+        return path
+    except OSError as exc:
+        log.warning("could not write cookies file: %s", exc)
+        return ""
 
 # Reconnect so a transient network blip mid-song doesn't kill playback.
 FFMPEG_BEFORE_OPTIONS = "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
@@ -32,7 +57,13 @@ class Track:
     requester_id: int = 0  # their Discord user id (for self-skip / DJ checks)
 
 
-def _ytdl_opts() -> dict:
+# Player clients to try, in order. `None` = yt-dlp's own maintained default set
+# (usually the best). The rest are fallbacks that behave differently under
+# YouTube's datacenter bot checks; whichever first yields a stream wins.
+_CLIENT_ATTEMPTS: list[list[str] | None] = [None, ["ios"], ["tv"], ["android"], ["web"]]
+
+
+def _ytdl_opts(player_clients: list[str] | None) -> dict:
     opts: dict = {
         "format": "bestaudio/best",
         "noplaylist": True,          # a radio/mix/playlist link resolves to its single video
@@ -41,37 +72,51 @@ def _ytdl_opts() -> dict:
         "default_search": "ytsearch",  # bare words → YouTube search
         "source_address": "0.0.0.0",
         "cachedir": False,
-        # The android player client dodges most datacenter "sign in" bot checks.
-        "extractor_args": {"youtube": {"player_client": ["android"]}},
     }
-    if config.MUSIC_COOKIE_FILE:
-        opts["cookiefile"] = config.MUSIC_COOKIE_FILE
+    if player_clients:
+        opts["extractor_args"] = {"youtube": {"player_client": player_clients}}
+    cookie = _cookie_path()
+    if cookie:
+        opts["cookiefile"] = cookie
     return opts
 
 
-def _extract(query: str) -> dict | None:
+def _extract(query: str) -> tuple[dict | None, str | None]:
+    """Try each player client until one yields a playable stream. (info, error)."""
     import yt_dlp  # imported lazily so the bot boots even if yt-dlp isn't installed
-    with yt_dlp.YoutubeDL(_ytdl_opts()) as ydl:
-        info = ydl.extract_info(query, download=False)
-    if not info:
-        return None
-    if "entries" in info:  # search results / playlist → take the first real entry
-        entries = [e for e in (info.get("entries") or []) if e]
-        if not entries:
-            return None
-        info = entries[0]
-    return info
+    last_err: str | None = None
+    for clients in _CLIENT_ATTEMPTS:
+        try:
+            with yt_dlp.YoutubeDL(_ytdl_opts(clients)) as ydl:
+                info = ydl.extract_info(query, download=False)
+        except Exception as exc:  # noqa: BLE001 — try the next client
+            last_err = str(exc)
+            continue
+        if not info:
+            last_err = "no result"
+            continue
+        if "entries" in info:  # search results / playlist → first real entry
+            entries = [e for e in (info.get("entries") or []) if e]
+            if not entries:
+                last_err = "no matches found"
+                continue
+            info = entries[0]
+        if info.get("url"):
+            return info, None
+        last_err = "no playable audio stream"
+    return None, last_err
 
 
-async def resolve(query: str, requester: str, requester_id: int = 0) -> Track | None:
-    """Return a playable Track for a URL or search string, or None if nothing found."""
+async def resolve(query: str, requester: str, requester_id: int = 0) -> tuple["Track | None", str | None]:
+    """Resolve a URL/search to a Track. Returns (track, None) or (None, reason)."""
     try:
-        info = await asyncio.to_thread(_extract, query)
-    except Exception as exc:  # noqa: BLE001 — surface a clean failure to the caller
-        log.info("music resolve failed for %r: %s", query, exc)
-        return None
-    if not info or not info.get("url"):
-        return None
+        info, err = await asyncio.to_thread(_extract, query)
+    except Exception as exc:  # noqa: BLE001
+        log.info("music resolve crashed for %r: %s", query, exc)
+        return None, str(exc)
+    if not info:
+        log.info("music resolve failed for %r: %s", query, err)
+        return None, err
     return Track(
         title=info.get("title") or "unknown track",
         webpage_url=info.get("webpage_url") or query,
@@ -81,7 +126,24 @@ async def resolve(query: str, requester: str, requester_id: int = 0) -> Track | 
         thumbnail=info.get("thumbnail"),
         requester=requester,
         requester_id=requester_id,
-    )
+    ), None
+
+
+def friendly_error(reason: str | None) -> str:
+    """Turn a raw yt-dlp error into a short, actionable line for chat."""
+    r = (reason or "").lower()
+    if "sign in" in r or "not a bot" in r or "confirm you" in r:
+        return ("YouTube is blocking this server with a bot check. add a cookies.txt via "
+                "`MUSIC_COOKIE_FILE` to fix it (see the README).")
+    if "age" in r and "restrict" in r:
+        return "that video is age-restricted — YouTube needs a `MUSIC_COOKIE_FILE` (cookies) to play it."
+    if "private" in r:
+        return "that video is private."
+    if "unavailable" in r or "removed" in r or "no matches" in r or "no result" in r:
+        return "couldn't find that — try a different link or search terms."
+    if "no playable" in r:
+        return "found it, but couldn't get a playable audio stream."
+    return "couldn't find or load that. try a different link or search."
 
 
 def fmt_duration(seconds: int) -> str:
