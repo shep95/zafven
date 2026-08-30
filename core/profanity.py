@@ -1,8 +1,17 @@
-"""Profanity detection + censoring.
+"""Profanity / slur / sexual-language detection + censoring.
 
-Word-boundary, case-insensitive matching against a built-in list (+ any extras
-from config), with light leetspeak normalisation so common evasions still match.
-Censoring keeps the first letter and stars the rest: "shit" -> "s***".
+Three curated word sets are matched case-insensitively on word boundaries, with
+light leetspeak normalisation so common evasions ("n1gga", "f4g", "b!tch") still
+match:
+  * PROFANITY — strong curse words
+  * SLUR      — racist / homophobic / ableist hate slurs
+  * SEXUAL    — explicit sexual slang / slurs
+
+`categories(text)` reports which of those a message tripped (so the mod notice can
+name it); `count()` and `censor()` operate on the union of all three.
+Word-boundary matching keeps the Scunthorpe problem in check ("class", "cockpit",
+"pass" don't match). This moderates what *users* post — it's independent of the
+bot's own uncensored replies.
 """
 from __future__ import annotations
 
@@ -10,35 +19,76 @@ import re
 
 import config
 
-# Curated base list of common strong profanity. Extend via PROFANITY_EXTRA_WORDS.
-_BASE_WORDS = {
-    "fuck", "fucker", "fucking", "motherfucker", "shit", "bullshit", "bitch",
-    "bastard", "asshole", "dickhead", "cunt", "slut", "whore", "prick",
-    "wanker", "twat", "faggot", "nigger", "nigga", "retard", "cum",
-    "cock", "pussy", "dick", "douche", "jackass",
+# ── Strong curse words ────────────────────────────────────────────────────
+_PROFANITY = {
+    "fuck", "fuk", "fuckin", "fucking", "fucked", "fucker", "fuckers", "fuckhead",
+    "fuckface", "fuckwit", "motherfucker", "motherfuckers", "motherfucking",
+    "shit", "shite", "shitty", "shithead", "bullshit", "dogshit", "batshit",
+    "bitch", "bitches", "bitching", "bastard", "bastards",
+    "asshole", "assholes", "arsehole", "arseholes", "ass", "arse", "jackass",
+    "dumbass", "smartass", "dumbfuck", "dickhead", "dickheads", "prick", "pricks",
+    "cock", "cocks", "wanker", "wankers", "twat", "twats", "bollocks",
+    "douchebag", "douche", "cunt", "cunts", "piss",
 }
 
+# ── Racist / homophobic / ableist hate slurs ──────────────────────────────
+_SLUR = {
+    "nigger", "niggers", "nigga", "niggas", "niggaz", "niggah", "nigguh",
+    "faggot", "faggots", "fag", "fags", "faggy", "dyke", "dykes",
+    "tranny", "trannies", "chink", "chinks", "gook", "gooks", "spic", "spics",
+    "wetback", "wetbacks", "kike", "kikes", "coon", "coons", "beaner", "beaners",
+    "raghead", "ragheads", "towelhead", "towelheads", "sandnigger", "sandniggers",
+    "paki", "pakis", "wop", "wops", "dago", "dagos", "gypo", "retard", "retards",
+    "retarded", "tard", "tards", "spastic", "mongoloid",
+}
+
+# ── Explicit sexual slang / slurs ─────────────────────────────────────────
+_SEXUAL = {
+    "slut", "sluts", "slutty", "whore", "whores", "cum", "cumming", "cumshot",
+    "jizz", "blowjob", "blowjobs", "handjob", "rimjob", "deepthroat", "creampie",
+    "gangbang", "bukkake", "dildo", "dildos", "buttplug", "pussy", "pussies",
+    "jerkoff", "jackoff", "thot", "thots", "clit", "dickpic", "dickpics",
+    "cameltoe", "coochie", "fleshlight", "fleshlight",
+}
+
+_CATEGORY_LABEL = {
+    "slur": "a hateful slur",
+    "sexual": "explicit sexual language",
+    "profanity": "strong profanity",
+}
+# Order the notice lists categories in (worst first).
+_CATEGORY_ORDER = ("slur", "sexual", "profanity")
+
 # Leetspeak / symbol substitutions applied before detection (not to the output).
-_LEET = str.maketrans({"@": "a", "0": "o", "1": "i", "!": "i", "3": "e", "4": "a", "$": "s", "5": "s", "7": "t"})
+_LEET = str.maketrans({"@": "a", "0": "o", "1": "i", "!": "i", "3": "e",
+                       "4": "a", "$": "s", "5": "s", "7": "t"})
 
 
-def _all_words() -> set[str]:
-    extra = {w.lower() for w in config.PROFANITY_EXTRA_WORDS}
-    return _BASE_WORDS | extra
+def _sets() -> dict[str, set[str]]:
+    """The three word sets, with config extras folded into 'profanity'."""
+    extra = {w.lower() for w in config.PROFANITY_EXTRA_WORDS if w.strip()}
+    return {"profanity": _PROFANITY | extra, "slur": set(_SLUR), "sexual": set(_SEXUAL)}
 
 
-def _pattern() -> re.Pattern[str]:
-    words = sorted(_all_words(), key=len, reverse=True)
-    return re.compile(r"\b(" + "|".join(re.escape(w) for w in words) + r")\b", re.IGNORECASE)
+def _compile(words: set[str]) -> re.Pattern[str]:
+    ordered = sorted(words, key=len, reverse=True)
+    return re.compile(r"\b(" + "|".join(re.escape(w) for w in ordered) + r")\b", re.IGNORECASE)
 
 
-_PATTERN = _pattern()
+# Per-category patterns (for naming the violation) + one combined pattern.
+_CATEGORY_PATTERNS: dict[str, re.Pattern[str]] = {}
+_PATTERN: re.Pattern[str]
 
 
 def refresh() -> None:
-    """Rebuild the pattern after config changes (e.g. extra words)."""
-    global _PATTERN
-    _PATTERN = _pattern()
+    """Rebuild the patterns after a config change (e.g. extra words)."""
+    global _CATEGORY_PATTERNS, _PATTERN
+    sets = _sets()
+    _CATEGORY_PATTERNS = {cat: _compile(words) for cat, words in sets.items()}
+    _PATTERN = _compile(set().union(*sets.values()))
+
+
+refresh()
 
 
 def _normalize(text: str) -> str:
@@ -46,8 +96,24 @@ def _normalize(text: str) -> str:
 
 
 def count(text: str) -> int:
-    """How many profane words appear (counts evasions via normalisation too)."""
+    """How many banned words appear (counts leetspeak evasions too)."""
     return len(_PATTERN.findall(_normalize(text)))
+
+
+def categories(text: str) -> list[str]:
+    """Which categories the text trips, worst-first (['slur', 'sexual', ...])."""
+    normalized = _normalize(text)
+    return [cat for cat in _CATEGORY_ORDER if _CATEGORY_PATTERNS[cat].search(normalized)]
+
+
+def describe(text: str) -> str:
+    """Human phrase for the tripped categories, e.g. 'a hateful slur and strong profanity'."""
+    labels = [_CATEGORY_LABEL[c] for c in categories(text)]
+    if not labels:
+        return "banned language"
+    if len(labels) == 1:
+        return labels[0]
+    return ", ".join(labels[:-1]) + " and " + labels[-1]
 
 
 def _star(word: str) -> str:
@@ -55,10 +121,10 @@ def _star(word: str) -> str:
 
 
 def censor(text: str) -> str:
-    """Return the text with profane words starred out.
+    """Return the text with banned words starred out.
 
-    Detection runs on a normalised copy; replacement maps back to the original
-    spans so the visible message keeps its original (now-starred) characters.
+    Detection runs on a leetspeak-normalised copy; because normalisation is a
+    1:1 character map, spans map straight back onto the original text.
     """
     normalized = _normalize(text)
     result: list[str] = []

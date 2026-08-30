@@ -21,8 +21,10 @@ class PsychSmokeTests(unittest.TestCase):
     def test_config_uncensored_defaults(self) -> None:
         self.assertEqual(config.GEMINI_SAFETY, "BLOCK_NONE")
         self.assertTrue(config.UNCENSORED_MODE)
-        self.assertFalse(config.PROFANITY_FILTER_ENABLED)
         self.assertFalse(config.NSFW_SCAN_ENABLED)
+        # The bot's own replies stay uncensored; the profanity filter moderates
+        # what USERS post and is on by default (slurs/sexual language auto-removed).
+        self.assertTrue(config.PROFANITY_FILTER_ENABLED)
 
     def test_apply_uncensored_once(self) -> None:
         from core.brain_loader import apply_uncensored

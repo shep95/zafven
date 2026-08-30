@@ -148,15 +148,23 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
   warning is active, they're **muted for 30 minutes** (`HARASS_MUTE_SECONDS`).
   Mods exempt. Needs **Manage Messages** + **Moderate Members**.
 
-### Profanity filter
+### Profanity / slur / sexual-language filter
 
-Curse words are auto-censored by [`cogs/profanity_cog.py`](cogs/profanity_cog.py).
-When a message hits `PROFANITY_THRESHOLD` profane words, the bot deletes it and —
-with `PROFANITY_ACTION=censor` — reposts a starred version
-(`🔇 **Name:** what the f*** s***`). Set `PROFANITY_ACTION=delete` to just remove
-it with a brief warning. Members with **Manage Messages** are exempt by default,
-and you can extend the word list via `PROFANITY_EXTRA_WORDS`. Needs the bot to
-have **Manage Messages**.
+Banned language is auto-moderated by [`cogs/profanity_cog.py`](cogs/profanity_cog.py)
+against three built-in word sets — **strong curse words**, **racist/homophobic/
+ableist hate slurs**, and **explicit sexual slang** — matched on word boundaries
+with leetspeak normalisation (`n1gga`, `f4g`, `b!tch` still match). When a message
+hits `PROFANITY_THRESHOLD` banned words the bot **deletes it** and posts a short
+auto-deleting notice that names what was wrong and asks the member to correct
+themselves.
+
+Each removal is a **strike**. Strikes expire after a rolling window
+(`PROFANITY_STRIKE_WINDOW_SECONDS`, default 1 hour); reach `PROFANITY_STRIKE_LIMIT`
+(default 3) inside that window and the member is **timed out** for
+`PROFANITY_MUTE_SECONDS` (default 15 min) and their strike count resets. Members
+with **Manage Messages** are exempt by default; extend the word list via
+`PROFANITY_EXTRA_WORDS`. Needs **Manage Messages** (delete) and **Moderate Members**
+(timeout).
 
 ## Quick start (local)
 
@@ -229,11 +237,13 @@ flowchart LR
 | `GEMINI_API_KEY` | — | **Required.** Google Gemini API key |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | multimodal model for readings + vision |
 | `GEMINI_WEB_SEARCH` | `auto` | `auto` / `on` / `off` for `/predict` grounding |
-| `PROFANITY_FILTER_ENABLED` | `true` | toggle the curse-word filter |
-| `PROFANITY_ACTION` | `censor` | `censor` (repost starred) or `delete` |
-| `PROFANITY_THRESHOLD` | `1` | curse words per message before acting |
-| `PROFANITY_EXTRA_WORDS` | *(blank)* | extra words to censor |
+| `PROFANITY_FILTER_ENABLED` | `true` | toggle the profanity/slur/sexual filter |
+| `PROFANITY_THRESHOLD` | `1` | banned words per message before acting |
+| `PROFANITY_EXTRA_WORDS` | *(blank)* | extra words to ban |
 | `PROFANITY_BYPASS_MODS` | `true` | exempt members with Manage Messages |
+| `PROFANITY_STRIKE_LIMIT` | `3` | strikes in the window before a timeout |
+| `PROFANITY_STRIKE_WINDOW_SECONDS` | `3600` | rolling window for strikes (1 hour) |
+| `PROFANITY_MUTE_SECONDS` | `900` | mute length at the strike limit (15 min) |
 | `ANTISPAM_ENABLED` | `true` | toggle anti-spam/scam |
 | `ANTISPAM_MAX_MENTIONS` | `5` | mentions per message before acting |
 | `ANTISPAM_TIMEOUT_SECONDS` | `300` | how long to mute a spammer (0 = no mute) |

@@ -101,16 +101,21 @@ HARASS_MUTE_SECONDS: int = _int("HARASS_MUTE_SECONDS", 1800)
 HARASS_WARN_WINDOW_SECONDS: int = _int("HARASS_WARN_WINDOW_SECONDS", 3600)
 HARASS_BYPASS_MODS: bool = os.getenv("HARASS_BYPASS_MODS", "true").strip().lower() in {"1", "true", "yes"}
 
-# ── Profanity filter ─────────────────────────────────────────────────────
-PROFANITY_FILTER_ENABLED: bool = os.getenv("PROFANITY_FILTER_ENABLED", "false").strip().lower() in {"1", "true", "yes"}
-# How many curse words in one message before the bot acts. 1 = censor any.
+# ── Profanity / slur / sexual-language filter ────────────────────────────
+# Auto-deletes banned language, warns the member, and mutes on repeat strikes.
+PROFANITY_FILTER_ENABLED: bool = os.getenv("PROFANITY_FILTER_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+# How many banned words in one message before the bot acts. 1 = act on any.
 PROFANITY_THRESHOLD: int = _int("PROFANITY_THRESHOLD", 1)
-# "censor" = delete + repost a starred version; "delete" = delete + brief warning.
-PROFANITY_ACTION: str = os.getenv("PROFANITY_ACTION", "censor").strip().lower()
 # Extra words to treat as profanity (comma-separated), added to the built-in list.
 PROFANITY_EXTRA_WORDS: list[str] = _csv("PROFANITY_EXTRA_WORDS", "")
 # Members with Manage Messages (mods/admins) are exempt when this is on.
 PROFANITY_BYPASS_MODS: bool = os.getenv("PROFANITY_BYPASS_MODS", "true").strip().lower() in {"1", "true", "yes"}
+# Strike system: this many strikes inside the rolling window → timeout.
+PROFANITY_STRIKE_LIMIT: int = _int("PROFANITY_STRIKE_LIMIT", 3)
+# Rolling window strikes are counted over (seconds). Default 1 hour.
+PROFANITY_STRIKE_WINDOW_SECONDS: int = _int("PROFANITY_STRIKE_WINDOW_SECONDS", 3600)
+# How long (seconds) the member is muted once they hit the strike limit. Default 15 min.
+PROFANITY_MUTE_SECONDS: int = _int("PROFANITY_MUTE_SECONDS", 900)
 
 
 # ── Culture adaptation (learn the server's vibe) ─────────────────────────
