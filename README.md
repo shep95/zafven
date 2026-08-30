@@ -72,6 +72,7 @@ They live in [`brains/`](brains/) as plain markdown and are read-only at runtime
 | `numerology.md` | `/numerology` | Pythagorean + Vedic planet mapping |
 | `zodiac.md` | `/zodiac` | Chinese zodiac physiognomy |
 | `emotions.md` | `/vibe` | communication-style heuristics |
+| `patterns.md` | `/synthesize`, cross-domain output | operational architecture patterns — persona-vs-pattern, the cross-domain reasoner profile, and the full human/systems pattern taxonomy |
 
 > The design deliberately loads brains **one at a time** — concatenating all of them
 > produces contradictory mush.

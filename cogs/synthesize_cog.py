@@ -37,9 +37,11 @@ class SynthesizeCog(commands.Cog):
             ask += f"\nDeliberately bridge these domains: {domains.strip()}"
         ask += ("\n\nUse web research to ground each domain's principle in what's actually known. "
                 "Then run the full synthesis method and give the cross-domain conclusion.")
+        # cross_domain = the method; patterns = the structural vocabulary it draws on.
+        system = load_brain("cross_domain") + "\n\n" + load_brain("patterns")
         try:
             out = await self.bot.gateway.narrate(  # type: ignore[attr-defined]
-                load_brain("cross_domain"), ask, web_search=True, max_tokens=1900)
+                system, ask, web_search=True, max_tokens=1900)
         except GatewayError as exc:
             log.warning("synthesize failed: %s", exc)
             await interaction.followup.send("🔌 Synthesis engine unreachable. Try again shortly.")
