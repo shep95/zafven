@@ -1,9 +1,8 @@
-# Hold below 2.7 — discord.py 2.7 broke voice *receiving* in discord-ext-voice-recv.
-discord.py[voice]>=2.5,<2.7
-# Two-way voice (lets her hear/receive audio); mainline discord.py can't.
-# This package only ships pre-release builds, so pin an exact alpha version.
-discord-ext-voice-recv==0.5.2a179
-# Crypto backend for the AEAD voice encryption modes (helps packet decryption).
+# Discord library with voice support (PyNaCl). The experimental voice-*receive*
+# extension was removed — it swapped in an unstable alpha voice client that hung
+# connections; speaking/music use the standard client, so any recent 2.x is fine.
+discord.py[voice]>=2.5
+# Crypto backend for the AEAD voice encryption modes.
 cryptography>=42.0
 python-dotenv>=1.0.0
 # Vedic astrology computations (Swiss Ephemeris).

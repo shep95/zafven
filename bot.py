@@ -65,7 +65,7 @@ INITIAL_COGS = [
 
 
 def _load_opus() -> None:
-    """Explicitly load libopus (needed to decode received voice audio).
+    """Explicitly load libopus (needed to encode voice audio for playback/TTS).
 
     discord.py's auto-loader uses find_library, which fails in minimal containers
     even when libopus is installed — so load it directly by filename.
@@ -84,7 +84,7 @@ def _load_opus() -> None:
             return
         except Exception:  # noqa: BLE001
             continue
-    log.warning("Could not load libopus — voice *receiving* (/vc listen) won't decode audio.")
+    log.warning("Could not load libopus — voice playback (/say, /play, TTS) may not work.")
 
 
 def build_intents() -> discord.Intents:
