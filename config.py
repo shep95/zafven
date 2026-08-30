@@ -117,6 +117,14 @@ PROFANITY_STRIKE_WINDOW_SECONDS: int = _int("PROFANITY_STRIKE_WINDOW_SECONDS", 3
 # How long (seconds) the member is muted once they hit the strike limit. Default 15 min.
 PROFANITY_MUTE_SECONDS: int = _int("PROFANITY_MUTE_SECONDS", 900)
 
+# ── Music player (YouTube → voice channel) ───────────────────────────────
+MUSIC_ENABLED: bool = os.getenv("MUSIC_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+# Max tracks a single guild can have queued at once.
+MUSIC_MAX_QUEUE: int = _int("MUSIC_MAX_QUEUE", 100)
+# Optional path to a cookies.txt export — lets yt-dlp past YouTube's "sign in to
+# confirm you're not a bot" checks that hit datacenter IPs (e.g. on Railway).
+MUSIC_COOKIE_FILE: str = os.getenv("MUSIC_COOKIE_FILE", "").strip()
+
 
 # ── Culture adaptation (learn the server's vibe) ─────────────────────────
 CULTURE_ADAPT_ENABLED: bool = os.getenv("CULTURE_ADAPT_ENABLED", "true").strip().lower() in {"1", "true", "yes"}

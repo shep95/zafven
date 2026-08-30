@@ -237,6 +237,10 @@ class VoiceCog(commands.Cog):
     async def maybe_speak(self, guild: discord.Guild, text: str) -> None:
         if not self._speak.get(guild.id) or guild.voice_client is None:
             return
+        # Keep the channel music-only while a track is playing/queued — don't talk over it.
+        music = self.bot.get_cog("MusicCog")
+        if music is not None and music.is_active(guild.id):  # type: ignore[attr-defined]
+            return
         await self._speak_text(guild, text)
 
     async def _speak_text(self, guild: discord.Guild, text: str) -> bool:

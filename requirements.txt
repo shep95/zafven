@@ -18,3 +18,6 @@ Pillow>=10.0.0
 youtube-transcript-api>=0.6.2
 # aiohttp ships with discord.py and powers the Gemini gateway — pinned for clarity.
 aiohttp>=3.9.0
+# Resolve YouTube / search queries to a streamable audio URL for the /play music
+# player. Keep it fresh — YouTube changes often and yt-dlp ships frequent fixes.
+yt-dlp>=2024.8.6

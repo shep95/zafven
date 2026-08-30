@@ -72,6 +72,17 @@ class HelpCog(commands.Cog):
                    "`/say <text>` · `/vc speak <on/off>` · `/vc leave`"),
             inline=False)
         embed.add_field(
+            name="🎵 Music",
+            value=("`/play <link or search>` — join your VC and **play music** from YouTube (queues "
+                   "if something's already playing).\n"
+                   "`/playnext <link>` — **jump the line** and play a song next.\n"
+                   "`/loop track|queue|off` — repeat one song or the whole queue.\n"
+                   "`/queue` · `/shuffle` · `/remove <n>` · `/clear` · `/nowplaying`\n"
+                   "`/skip` · `/pause` · `/resume` · `/volume <0-200>` · `/stop` (stop + leave)\n"
+                   "While music is playing the VC stays **music-only** (she won't talk over it), "
+                   "and she auto-leaves when the channel empties."),
+            inline=False)
+        embed.add_field(
             name="🌌 Community & events",
             value=("`/rank [member]` · `/leaderboard` — initiation XP & levels (earn roles by chatting)\n"
                    "`/capsule <message> <deliver_on> [public]` — send a message to the future\n"
