@@ -47,10 +47,18 @@ class MusicError(Exception):
     """Reserved for future explicit failures."""
 
 
+# If we attempt this many rejoins inside the window, 24/7 is flapping (bad perms,
+# stale voice session, …) — give up so the bot doesn't join/leave in a loop.
+_REJOIN_MAX = 3
+_REJOIN_WINDOW = 60.0
+
+
 class MusicCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._states: dict[int, _GuildState] = {}
+        self._rejoin_hist: dict[int, list[float]] = {}  # guild_id -> recent rejoin attempt times
+        self._restored = False                          # on_ready runs the restore once
 
     def _state(self, guild_id: int) -> _GuildState:
         return self._states.setdefault(guild_id, _GuildState())
@@ -432,27 +440,58 @@ class MusicCog(commands.Cog):
         except Exception:  # noqa: BLE001 — persistence is best-effort
             log.exception("failed to persist 24/7 state")
 
+    async def _disable_247(self, guild: discord.Guild, reason: str) -> None:
+        state = self._state(guild.id)
+        state.stay = False
+        state.home_channel_id = None
+        self._rejoin_hist.pop(guild.id, None)
+        await self._save_247(guild, None)
+        log.warning("24/7 disabled in %s: %s", guild.id, reason)
+
     async def _rejoin(self, guild: discord.Guild) -> None:
-        """Reconnect to the saved 24/7 channel if we're not already connected there."""
+        """Reconnect to the saved 24/7 channel, with loop protection."""
+        import time
         state = self._state(guild.id)
         cid = state.home_channel_id
-        if not cid:
-            return
-        channel = guild.get_channel(cid)
-        if not isinstance(channel, discord.VoiceChannel):
+        if not state.stay or not cid:
             return
         vc = guild.voice_client
+        # Already where we should be → nothing to do (prevents needless churn).
+        if vc is not None and vc.channel is not None and vc.channel.id == cid:
+            return
+
+        channel = guild.get_channel(cid)
+        if not isinstance(channel, discord.VoiceChannel):
+            await self._disable_247(guild, "saved channel is gone")
+            return
+        # No Connect permission is the classic cause of a join/leave loop — bail out.
+        if not channel.permissions_for(guild.me).connect:
+            await self._disable_247(guild, f"missing Connect in #{channel.name}")
+            return
+
+        # Loop guard: too many attempts in the window → it's flapping, give up.
+        now = time.time()
+        hist = [t for t in self._rejoin_hist.get(guild.id, []) if now - t < _REJOIN_WINDOW]
+        if len(hist) >= _REJOIN_MAX:
+            await self._disable_247(guild, "rejoin loop detected (bad perms or stale voice session)")
+            return
+        hist.append(now)
+        self._rejoin_hist[guild.id] = hist
+
         try:
             if vc is None:
                 await channel.connect()
-            elif vc.channel.id != cid:
+            else:
                 await vc.move_to(channel)
         except (discord.ClientException, discord.HTTPException, asyncio.TimeoutError) as exc:
             log.info("24/7 rejoin failed in %s: %s", guild.id, exc)
 
     @commands.Cog.listener()
     async def on_ready(self) -> None:
-        """Restore 24/7 sessions after a (re)start."""
+        """Restore 24/7 sessions after a (re)start — once per process."""
+        if self._restored:
+            return
+        self._restored = True
         for guild in self.bot.guilds:
             try:
                 s = await store.get_store(guild)
@@ -472,11 +511,13 @@ class MusicCog(commands.Cog):
             return
         state = self._state(member.guild.id)
 
-        # The bot itself was disconnected/moved (kicked, dragged, network drop).
+        # The bot itself was disconnected (kicked, dragged out, network drop).
         if member.id == self.bot.user.id:
             if state.stay and before.channel is not None and after.channel is None:
-                await asyncio.sleep(2)  # let Discord settle, then rejoin
-                await self._rejoin(member.guild)
+                await asyncio.sleep(2)  # let Discord settle
+                # Only rejoin if we're genuinely disconnected — not mid internal reconnect.
+                if member.guild.voice_client is None:
+                    await self._rejoin(member.guild)
             return
 
         vc = member.guild.voice_client
