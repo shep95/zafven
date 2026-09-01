@@ -53,8 +53,11 @@ class VoiceCog(commands.Cog):
             if existing and existing.channel == channel:
                 return existing, None
             if existing:
-                await asyncio.wait_for(existing.move_to(channel), timeout=CONNECT_TIMEOUT)
-                return existing, None
+                return None, (
+                    f"I'm already connected to **{existing.channel.name}** in this server. "
+                    "Discord allows one voice connection per bot account per server; "
+                    "I can be in multiple servers at once, but not two VCs in this server."
+                )
             return await channel.connect(timeout=CONNECT_TIMEOUT, reconnect=True), None
         except asyncio.TimeoutError:
             return None, "voice connection timed out — try again in a moment."

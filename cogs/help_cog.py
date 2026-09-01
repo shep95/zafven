@@ -1,4 +1,4 @@
-"""/help — lists zafven's commands."""
+"""/help - lists zafven's commands."""
 from __future__ import annotations
 
 import discord
@@ -12,97 +12,64 @@ class HelpCog(commands.Cog):
 
     @app_commands.command(name="help", description="What can zafven do?")
     async def help(self, interaction: discord.Interaction) -> None:
-        embed = discord.Embed(title="🜲 zafven — commands", color=discord.Color.dark_purple())
+        embed = discord.Embed(title="zafven - commands", color=discord.Color.dark_purple())
         embed.add_field(
-            name="🔮 Readings (LLM-narrated)",
-            value=("`/vedic <birth_date> <birth_time> <birth_place>` — full Vedic chart + dashā\n"
-                   "`/numerology <full_name> <birth_date>` — solar + lunar numerology\n"
-                   "`/zodiac <birth_date>` — Chinese zodiac (year/month/day)\n"
-                   "`/predict <question> [birth_date]` — ask the oracle (researches it + reads it)\n"
-                   "`/ask <question>` — ask Zafven anything (direct, uncensored, truthful)\n"
-                   "`/vibe [share]` — a playful read of *your own* chat style\n"
-                   "`/profile <member> [focus]` — public psychological breakdown from chat history\n"
-                   "`/imagine <image> [question]` — describe & interpret an uploaded image\n"
-                   "`/synastry <name_a> <date_a> <name_b> <date_b>` — compatibility reading"),
+            name="Core",
+            value=("`/ask <question>` - ask Zafven anything\n"
+                   "`/vibe [share]` - a playful read of your own chat style\n"
+                   "`/imagine <image> [question]` - describe an uploaded image\n"
+                   "Mention Bible references like `John 3:16` and Zafven replies with exact verses "
+                   "from configured Bible translations."),
             inline=False)
         embed.add_field(
-            name="🃏 Divination & art",
-            value=("`/tarot [question] [cards]` — tarot spread\n"
-                   "`/iching [question]` — cast the I Ching\n"
-                   "`/dream <dream>` — symbolic dream reading\n"
-                   "`/gematria decode|date|resonance <word>` — 5-cipher gematria engine\n"
-                   "`/sigil <intent>` — forge a personal sigil image\n"
-                   "`/portrait <full_name> <birth_date>` — frequency portrait image"),
+            name="Tools",
+            value=("`/research <topic>` - live web research briefing\n"
+                   "`/synthesize <question> [domains]` - cross-domain research\n"
+                   "`/council <question> [constraints]` - compare candidate answers and ship the best one\n"
+                   "`/youtube <query>` - find YouTube videos\n"
+                   "`/learn <topic|youtube link>` - post a knowledge report to #knowledge\n"
+                   "`/grab <link>` - pull an image/video from a link and post it here\n"
+                   "`/tldr [count]` - summarize recent messages here\n"
+                   "`/askdoc <pdf> <question>` - ask a question about a PDF\n"
+                   "`/audit <file>` - security + quality audit of code/.zip\n"
+                   "`/forge <spec> [language]` - plan a feature, then write code on approval"),
             inline=False)
         embed.add_field(
-            name="🧠 Tools",
-            value=("`/research <topic>` — live web research briefing\n"
-                   "`/ask <question>` — ask anything, get a direct uncensored answer\n"
-                   "`/synthesize <question> [domains]` — **cross-domain** research: bridges multiple "
-                   "fields to crack a question (the way the smartest people think)\n"
-                   "`/council <question> [constraints]` — **superposition & collapse**: spawns competing "
-                   "answers, adversarially kills the weak, ships the survivor (slower, but more right)\n"
-                   "`/youtube <query>` — find YouTube videos\n"
-                   "`/learn <topic|youtube link>` — post a knowledge report to #knowledge\n"
-                   "`/grab <link>` — pull an image/video from a link and post it here\n"
-                   "`/tldr [count]` — summarize recent messages here\n"
-                   "`/askdoc <pdf> <question>` — ask a question about a PDF\n"
-                   "`/audit <file>` — security + quality audit of code/.zip (fix on approval)\n"
-                   "`/forge <spec> [language]` — plan a feature, then write the code on approval"),
+            name="Just talk to her",
+            value=("Mention Zafven or reply to her to ask questions, look things up, joke, and banter.\n"
+                   "When she uses messages from other readable channels, she quotes the channel and sender.\n"
+                   "She remembers what you tell her. `/memory` shows it, `/forget` wipes it.\n"
+                   "`/feelings` shows her current mood toward you. `/culture view` shows server vibe.\n"
+                   "`/teach <topic> <fact>`, `/taught`, and `/unlearn` manage learned server facts.\n"
+                   "Admins can tune style with `/persona set` and add custom knowledge with `/brain add`."),
             inline=False)
         embed.add_field(
-            name="💬 Just talk to her",
-            value=("**@mention Zafven** (or reply to her) to **ask her anything** — she answers "
-                   "questions, looks things up, jokes, and banters. She's the resident oracle (she/her).\n"
-                   "She **remembers** what you tell her. `/memory` to see it, `/forget` to wipe it.\n"
-                   "She has **moods** — treat her well and she warms up; be rude and she gets dry. "
-                   "`/feelings` shows how she feels about you.\n"
-                   "She **learns the server's vibe** and blends in (`/culture view`).\n"
-                   "**Correct her** when she's wrong (reply with the right info) and she **files it in "
-                   "her knowledge base** and won't repeat the mistake. `/teach <topic> <fact>` to teach "
-                   "her directly, `/taught` to browse it, `/unlearn` (mods) to prune.\n"
-                   "Admins can reshape how she acts with `/persona set`, and add custom "
-                   "personality/lore/knowledge with `/brain add` (or `/brain view` the built-ins)."),
+            name="Voice",
+            value=("`/vc join` - bring her into your voice channel; she can speak replies aloud.\n"
+                   "`/say <text>` / `/vc speak <on/off>` / `/vc leave`"),
             inline=False)
         embed.add_field(
-            name="🎙️ Voice",
-            value=("`/vc join` — bring her into your voice channel; she **speaks her replies** "
-                   "(talk to her in chat, she answers out loud).\n"
-                   "`/say <text>` · `/vc speak <on/off>` · `/vc leave`"),
+            name="Music",
+            value=("`/play <link or search>` - join your VC and play music from YouTube\n"
+                   "`/playnext <link>` - jump the line and play a song next\n"
+                   "`/restartmusic` - restart the current song\n"
+                   "`/musicfreq <0|4-8>` - optional low-frequency tremolo for future songs\n"
+                   "`/defaultmusic add|list|remove|clear|start` - server creator default playlist\n"
+                   "`/playlist add|list|remove|clear|start|share|accept|reject` - personal playlists\n"
+                   "`/loop track|queue|off` / `/queue` / `/shuffle` / `/remove <n>` / `/clear`\n"
+                   "`/nowplaying` / `/skip` / `/pause` / `/resume` / `/volume <0-200>` / `/stop`\n"
+                   "`/247 on` - keep Zafven in the channel and rejoin after restart"),
             inline=False)
         embed.add_field(
-            name="🎵 Music",
-            value=("`/play <link or search>` — join your VC and **play music** from YouTube (queues "
-                   "if something's already playing).\n"
-                   "`/playnext <link>` — **jump the line** and play a song next.\n"
-                   "`/loop track|queue|off` — repeat one song or the whole queue.\n"
-                   "`/queue` · `/shuffle` · `/remove <n>` · `/clear` · `/nowplaying`\n"
-                   "`/skip` · `/pause` · `/resume` · `/volume <0-200>` · `/stop` (stop + leave)\n"
-                   "`/247 on` — **24/7 mode**: she stays in the channel and rejoins after a restart.\n"
-                   "While music is playing the VC stays **music-only** (she won't talk over it), "
-                   "and she auto-leaves when the channel empties. With a **DJ role** set, only DJs/"
-                   "mods (or the song's requester) can skip/stop others' music."),
-            inline=False)
-        embed.add_field(
-            name="🌌 Community & events",
-            value=("`/rank [member]` · `/leaderboard` — initiation XP & levels (earn roles by chatting)\n"
-                   "`/capsule <message> <deliver_on> [public]` — send a message to the future\n"
-                   "`/mood` — aggregate read of the server's current vibe\n"
-                   "`/cipher` (mod) · `/solve <answer>` — cipher puzzle events\n"
-                   "A **daily transit + koan** posts to #oracle; a weekly egregore digest on Mondays."),
-            inline=False)
-        embed.add_field(
-            name="🛡️ Server management",
-            value=("`/kick_inactive [days] [dry_run] [message]` — preview/remove inactive members "
-                   "with a reinvite DM (dry-run by default)\n"
-                   "`/report <message_link> [reason]` — escalate a message to the mods\n"
-                   "New members get a **welcome card**; leaves are logged.\n"
-                   "**Deleted messages** are logged (who/when/reply) for mods.\n"
-                   "**Banned language** (curse words, hate slurs, sexual slang) is auto-removed "
-                   "with a warning; **3 strikes in an hour → 15-min mute** "
-                   "(`/strikes check|clear @member` for mods).\n"
-                   "Spam/scam (floods, mass-mentions, invite & scam links) is auto-removed.\n"
-                   "**Cyberbullying** is warned once, then muted 30 min if it continues."),
+            name="Community & moderation",
+            value=("`/rank [member]` / `/leaderboard` - XP & levels\n"
+                   "`/capsule <message> <deliver_on> [public]` - send a message to the future\n"
+                   "`/mood` - aggregate read of the server's current vibe\n"
+                   "`/cipher` (mod) / `/solve <answer>` - cipher puzzle events\n"
+                   "`/kick_inactive [days] [dry_run] [message]` - preview/remove inactive members\n"
+                   "`/report <message_link> [reason]` - escalate a message to mods\n"
+                   "Welcome cards, deleted-message logs, profanity/slur moderation, anti-spam, "
+                   "anti-scam, and optional private seven-sins nudges are available."),
             inline=False)
         embed.set_footer(text="zafven")
         await interaction.response.send_message(embed=embed, ephemeral=True)

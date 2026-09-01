@@ -288,8 +288,65 @@ class ChatCog(commands.Cog):
         lines.reverse()
         lines.append(f"{message.author.display_name}: {message.content}")
         convo = "\n".join(lines)[:8000]
+        sources = await self._cross_channel_sources(message)
+        source_block = ""
+        if sources:
+            source_block = (
+                "\n\nPotential data sources from other channels I can read. If you use any of these, "
+                "quote the source text and name both the sender and channel:\n"
+                + "\n".join(sources)
+            )
         return (f"This is the recent chat in #{message.channel.name}.{ref_block}\n"
+                f"{source_block}\n"
                 f"Reply as Zafven to the last message, in character and in context:\n\n{convo}\n\nZafven:")
+
+    async def _cross_channel_sources(self, message: discord.Message) -> list[str]:
+        if not config.CHAT_CROSS_CHANNEL_SOURCES or message.guild is None:
+            return []
+        query_terms = self._source_terms(message.content)
+        if not query_terms:
+            return []
+        snippets: list[str] = []
+        channels = [
+            ch for ch in message.guild.text_channels
+            if ch.id != message.channel.id
+            and ch.permissions_for(message.guild.me).view_channel
+            and ch.permissions_for(message.guild.me).read_message_history
+        ][:config.CHAT_SOURCE_CHANNELS]
+        for ch in channels:
+            if len(snippets) >= config.CHAT_SOURCE_SNIPPETS:
+                break
+            try:
+                async for msg in ch.history(limit=config.CHAT_SOURCE_MESSAGES_PER_CHANNEL):
+                    if msg.author.bot or not msg.content.strip():
+                        continue
+                    lower = msg.content.lower()
+                    hits = sum(1 for term in query_terms if term in lower)
+                    if hits < min(2, len(query_terms)):
+                        continue
+                    quote = re.sub(r"\s+", " ", msg.content).strip()[:240]
+                    snippets.append(f'- #{ch.name} / {msg.author.display_name}: "{quote}"')
+                    if len(snippets) >= config.CHAT_SOURCE_SNIPPETS:
+                        break
+            except discord.HTTPException:
+                continue
+        return snippets
+
+    @staticmethod
+    def _source_terms(text: str) -> list[str]:
+        words = re.findall(r"[a-zA-Z0-9']{4,}", text.lower())
+        stop = {
+            "what", "when", "where", "which", "about", "from", "that", "this",
+            "with", "have", "they", "them", "would", "could", "should", "zafven",
+        }
+        terms: list[str] = []
+        for word in words:
+            if word in stop or word in terms:
+                continue
+            terms.append(word)
+            if len(terms) >= 8:
+                break
+        return terms
 
     @app_commands.command(name="memory", description="See what Zafven remembers about you.")
     @app_commands.guild_only()

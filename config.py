@@ -133,6 +133,22 @@ MUSIC_DJ_ROLE: str = os.getenv("MUSIC_DJ_ROLE", "").strip()
 # Allow the persistent 24/7 mode (/247) that keeps the bot in the VC and rejoins
 # after a restart or disconnect. Set false to forbid it.
 MUSIC_247_ALLOWED: bool = os.getenv("MUSIC_247_ALLOWED", "true").strip().lower() in {"1", "true", "yes"}
+# FFmpeg audio filter chain for Discord output. The default resamples cleanly to
+# Discord's 48 kHz stereo target and limits peaks that can buzz on phone speakers.
+MUSIC_AUDIO_FILTER: str = os.getenv(
+    "MUSIC_AUDIO_FILTER",
+    "aresample=48000:resampler=soxr:precision=28,alimiter=limit=0.95"
+).strip()
+# Optional low-frequency tremolo rate. This does not change the user's device
+# sample rate; it applies an FFmpeg filter to the music signal. Default 0 = off.
+MUSIC_TREMOLO_HZ: int = _int("MUSIC_TREMOLO_HZ", 4)
+
+# Bible reference replies
+BIBLE_REPLY_ENABLED: bool = os.getenv("BIBLE_REPLY_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+BIBLE_TRANSLATIONS: list[str] = _csv("BIBLE_TRANSLATIONS", "kjv,web,asv,dra")
+BIBLE_MAX_TRANSLATIONS: int = _int("BIBLE_MAX_TRANSLATIONS", 4)
+BIBLE_MAX_REFERENCES: int = _int("BIBLE_MAX_REFERENCES", 2)
+BIBLE_TIMEOUT_SECONDS: int = _int("BIBLE_TIMEOUT_SECONDS", 8)
 
 
 # ── Culture adaptation (learn the server's vibe) ─────────────────────────
@@ -148,6 +164,16 @@ CHAT_COOLDOWN_SECONDS: int = _int("CHAT_COOLDOWN_SECONDS", 6)
 CHAT_CONTEXT_MESSAGES: int = _int("CHAT_CONTEXT_MESSAGES", 12)
 # Restrict chatting to these channel names (comma-separated). Empty = everywhere.
 CHAT_CHANNELS: list[str] = _csv("CHAT_CHANNELS", "")
+# Addressed chat can scan other readable channels for short source snippets and
+# quote who said them when answering questions about server context.
+CHAT_CROSS_CHANNEL_SOURCES: bool = os.getenv("CHAT_CROSS_CHANNEL_SOURCES", "true").strip().lower() in {"1", "true", "yes"}
+CHAT_SOURCE_CHANNELS: int = _int("CHAT_SOURCE_CHANNELS", 8)
+CHAT_SOURCE_MESSAGES_PER_CHANNEL: int = _int("CHAT_SOURCE_MESSAGES_PER_CHANNEL", 30)
+CHAT_SOURCE_SNIPPETS: int = _int("CHAT_SOURCE_SNIPPETS", 6)
+
+# Private seven-deadly-sins correction nudges
+SEVEN_SINS_DM_ENABLED: bool = os.getenv("SEVEN_SINS_DM_ENABLED", "false").strip().lower() in {"1", "true", "yes"}
+SEVEN_SINS_COOLDOWN_SECONDS: int = _int("SEVEN_SINS_COOLDOWN_SECONDS", 21600)
 
 # ── Voice (Gemini text-to-speech) ────────────────────────────────────────
 GEMINI_TTS_MODEL: str = os.getenv("GEMINI_TTS_MODEL", "gemini-2.5-flash-preview-tts").strip()
@@ -177,11 +203,12 @@ DATA_CHANNEL: str = os.getenv("DATA_CHANNEL", "zafven-data").strip()
 RANKS_ENABLED: bool = os.getenv("RANKS_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
 RANK_COOLDOWN_SECONDS: int = _int("RANK_COOLDOWN_SECONDS", 60)
 # Role ladder as "RoleName:level" pairs; level = floor(sqrt(xp/100)).
-RANK_LADDER: list[str] = _csv("RANK_LADDER", "Seeker:1,Initiate:3,Adept:6,Mystic:10,Oracle:15")
+RANK_LADDER: list[str] = _csv("RANK_LADDER", "Helper:1,Regular:3,Trusted:6,Steward:10,Elder:15")
 
-# Daily broadcast (transit reading + koan) and weekly egregore digest
-DAILY_ENABLED: bool = os.getenv("DAILY_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
-DAILY_CHANNEL: str = os.getenv("DAILY_CHANNEL", "oracle").strip()
+# Daily broadcast is disabled by default; the former occult transit/oracle cog is
+# no longer loaded at startup.
+DAILY_ENABLED: bool = os.getenv("DAILY_ENABLED", "false").strip().lower() in {"1", "true", "yes"}
+DAILY_CHANNEL: str = os.getenv("DAILY_CHANNEL", "daily").strip()
 DAILY_HOUR_UTC: int = _int("DAILY_HOUR_UTC", 13)
 
 

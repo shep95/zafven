@@ -42,7 +42,20 @@ def _cookie_path() -> str:
 
 # Reconnect so a transient network blip mid-song doesn't kill playback.
 FFMPEG_BEFORE_OPTIONS = "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
-FFMPEG_OPTIONS = "-vn"
+
+
+def ffmpeg_options() -> str:
+    """Build Discord-safe FFmpeg output options from config."""
+    filters = [config.MUSIC_AUDIO_FILTER] if config.MUSIC_AUDIO_FILTER else []
+    tremolo = max(0, int(getattr(config, "MUSIC_TREMOLO_HZ", 0) or 0))
+    if tremolo:
+        # Keep the user-requested low-frequency effect bounded. This is a signal
+        # filter, not a change to the listener's physical output device.
+        filters.append(f"tremolo=f={max(4, min(tremolo, 8))}:d=0.25")
+    opts = ["-vn", "-ac 2", "-ar 48000"]
+    if filters:
+        opts.append(f"-af {','.join(filters)}")
+    return " ".join(opts)
 
 
 @dataclass

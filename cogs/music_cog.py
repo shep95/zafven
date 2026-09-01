@@ -25,6 +25,8 @@ from core import music, store
 log = logging.getLogger("zafven.music")
 
 _NS_247 = "music_247"   # store namespace: {"channel_id": int} per guild
+_NS_DEFAULT_PLAYLIST = "music_default_playlist"  # {"queries": [str]}
+_NS_USER_PLAYLISTS = "music_user_playlists"      # {user_id: {"queries": [str]}}
 
 
 class _GuildState:
@@ -54,11 +56,23 @@ _REJOIN_WINDOW = 60.0
 
 
 class MusicCog(commands.Cog):
+    defaultmusic = app_commands.Group(
+        name="defaultmusic",
+        description="Server-owner default music playlist controls.",
+        guild_only=True,
+    )
+    playlist = app_commands.Group(
+        name="playlist",
+        description="Your personal looping music playlist.",
+        guild_only=True,
+    )
+
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         self._states: dict[int, _GuildState] = {}
         self._rejoin_hist: dict[int, list[float]] = {}  # guild_id -> recent rejoin attempt times
         self._restored = False                          # on_ready runs the restore once
+        self._share_requests: dict[tuple[int, int], tuple[int, list[str]]] = {}
 
     def _state(self, guild_id: int) -> _GuildState:
         return self._states.setdefault(guild_id, _GuildState())
@@ -103,8 +117,11 @@ class MusicCog(commands.Cog):
             if vc and vc.channel == channel:
                 return vc, None
             if vc:
-                await asyncio.wait_for(vc.move_to(channel), timeout=20)
-                return vc, None
+                return None, (
+                    f"I'm already connected to **{vc.channel.name}** in this server. "
+                    "Discord allows one voice connection per bot account per server; "
+                    "I can be in multiple servers at once, but not two VCs in this server."
+                )
             return await channel.connect(timeout=20.0, reconnect=True), None
         except asyncio.TimeoutError:
             return None, "voice connection timed out — try again in a moment."
@@ -131,7 +148,7 @@ class MusicCog(commands.Cog):
                 source = discord.FFmpegPCMAudio(
                     track.stream_url,
                     before_options=music.FFMPEG_BEFORE_OPTIONS,
-                    options=music.FFMPEG_OPTIONS)
+                    options=music.ffmpeg_options())
                 source = discord.PCMVolumeTransformer(source, volume=state.volume)
             except Exception as exc:  # noqa: BLE001 — bad stream / ffmpeg missing
                 log.warning("failed to build audio source: %s", exc)
@@ -225,6 +242,64 @@ class MusicCog(commands.Cog):
         await interaction.followup.send(
             f"➕ queued **{track.title}** ({music.fmt_duration(track.duration)}) — {where}.")
 
+    async def _load_default_queries(self, guild: discord.Guild) -> list[str]:
+        s = await store.get_store(guild)
+        data = s.get(_NS_DEFAULT_PLAYLIST, {}) or {}
+        return [str(q) for q in data.get("queries", []) if str(q).strip()]
+
+    async def _save_default_queries(self, guild: discord.Guild, queries: list[str]) -> None:
+        s = await store.get_store(guild)
+        await s.set(_NS_DEFAULT_PLAYLIST, {"queries": queries})
+
+    async def _load_user_queries(self, guild: discord.Guild, user_id: int) -> list[str]:
+        s = await store.get_store(guild)
+        data = s.get(_NS_USER_PLAYLISTS, {}) or {}
+        mine = data.get(str(user_id), {}) or {}
+        return [str(q) for q in mine.get("queries", []) if str(q).strip()]
+
+    async def _save_user_queries(self, guild: discord.Guild, user_id: int, queries: list[str]) -> None:
+        s = await store.get_store(guild)
+        data = dict(s.get(_NS_USER_PLAYLISTS, {}) or {})
+        data[str(user_id)] = {"queries": queries}
+        await s.set(_NS_USER_PLAYLISTS, data)
+
+    def _is_server_owner(self, interaction: discord.Interaction) -> bool:
+        return bool(interaction.guild and interaction.user.id == interaction.guild.owner_id)
+
+    async def _queue_queries(self, interaction: discord.Interaction, queries: list[str], label: str) -> None:
+        if not queries:
+            await interaction.followup.send(f"{label} is empty.", ephemeral=True)
+            return
+        vc, err = await self._connect(interaction)
+        if err:
+            await interaction.followup.send(f"❌ {err}")
+            return
+        state = self._state(interaction.guild.id)
+        state.channel_id = interaction.channel_id
+        state.loop_mode = "queue"
+        added = 0
+        for query in queries[:config.MUSIC_MAX_QUEUE]:
+            track, reason = await music.resolve(
+                query,
+                requester=interaction.user.display_name,
+                requester_id=interaction.user.id,
+            )
+            if track is None:
+                log.info("playlist item skipped (%s): %s", query, reason)
+                continue
+            state.queue.append(track)
+            added += 1
+        if added == 0:
+            await interaction.followup.send(f"I couldn't resolve any songs in {label}.")
+            return
+        if not vc.is_playing() and not vc.is_paused() and state.current is None:
+            started = await self._start_next(interaction.guild)
+            if started is not None:
+                await interaction.followup.send(
+                    f"Started **{label}** on loop.", embed=self._now_playing_embed(started))
+                return
+        await interaction.followup.send(f"Queued **{added}** songs from **{label}** and set loop to queue.")
+
     @app_commands.command(name="play", description="Play a song in your voice channel (YouTube link or search).")
     @app_commands.describe(query="A YouTube/URL link, or words to search for.")
     @app_commands.guild_only()
@@ -236,6 +311,125 @@ class MusicCog(commands.Cog):
     @app_commands.guild_only()
     async def playnext(self, interaction: discord.Interaction, query: str) -> None:
         await self._enqueue(interaction, query, front=True)
+
+    @defaultmusic.command(name="add", description="Server owner: add a query to the server default playlist.")
+    @app_commands.describe(query="A YouTube link or search query.")
+    async def default_add(self, interaction: discord.Interaction, query: str) -> None:
+        if not self._is_server_owner(interaction):
+            await interaction.response.send_message("Only the server creator can set default music.", ephemeral=True)
+            return
+        queries = await self._load_default_queries(interaction.guild)
+        queries.append(query.strip())
+        await self._save_default_queries(interaction.guild, queries)
+        await interaction.response.send_message(f"Default music now has **{len(queries)}** queries.", ephemeral=True)
+
+    @defaultmusic.command(name="list", description="Server owner: list the server default playlist queries.")
+    async def default_list(self, interaction: discord.Interaction) -> None:
+        if not self._is_server_owner(interaction):
+            await interaction.response.send_message("Only the server creator can view default music.", ephemeral=True)
+            return
+        queries = await self._load_default_queries(interaction.guild)
+        body = "\n".join(f"{i}. {q}" for i, q in enumerate(queries, 1)) or "No default music set."
+        await interaction.response.send_message(body[:1900], ephemeral=True)
+
+    @defaultmusic.command(name="remove", description="Server owner: remove a default playlist query by number.")
+    async def default_remove(self, interaction: discord.Interaction, position: int) -> None:
+        if not self._is_server_owner(interaction):
+            await interaction.response.send_message("Only the server creator can set default music.", ephemeral=True)
+            return
+        queries = await self._load_default_queries(interaction.guild)
+        if position < 1 or position > len(queries):
+            await interaction.response.send_message("No default query at that position.", ephemeral=True)
+            return
+        gone = queries.pop(position - 1)
+        await self._save_default_queries(interaction.guild, queries)
+        await interaction.response.send_message(f"Removed `{gone}`.", ephemeral=True)
+
+    @defaultmusic.command(name="clear", description="Server owner: clear the server default playlist.")
+    async def default_clear(self, interaction: discord.Interaction) -> None:
+        if not self._is_server_owner(interaction):
+            await interaction.response.send_message("Only the server creator can set default music.", ephemeral=True)
+            return
+        await self._save_default_queries(interaction.guild, [])
+        await interaction.response.send_message("Default music cleared.", ephemeral=True)
+
+    @defaultmusic.command(name="start", description="Start the server default playlist on loop.")
+    async def default_start(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(thinking=True)
+        await self._queue_queries(interaction, await self._load_default_queries(interaction.guild),
+                                  "server default music")
+
+    @playlist.command(name="add", description="Add a query to your personal playlist.")
+    @app_commands.describe(query="A YouTube link or search query.")
+    async def playlist_add(self, interaction: discord.Interaction, query: str) -> None:
+        queries = await self._load_user_queries(interaction.guild, interaction.user.id)
+        queries.append(query.strip())
+        await self._save_user_queries(interaction.guild, interaction.user.id, queries)
+        await interaction.response.send_message(f"Your playlist now has **{len(queries)}** queries.", ephemeral=True)
+
+    @playlist.command(name="list", description="List your personal playlist queries.")
+    async def playlist_list(self, interaction: discord.Interaction) -> None:
+        queries = await self._load_user_queries(interaction.guild, interaction.user.id)
+        body = "\n".join(f"{i}. {q}" for i, q in enumerate(queries, 1)) or "Your playlist is empty."
+        await interaction.response.send_message(body[:1900], ephemeral=True)
+
+    @playlist.command(name="remove", description="Remove one query from your personal playlist.")
+    async def playlist_remove(self, interaction: discord.Interaction, position: int) -> None:
+        queries = await self._load_user_queries(interaction.guild, interaction.user.id)
+        if position < 1 or position > len(queries):
+            await interaction.response.send_message("No playlist query at that position.", ephemeral=True)
+            return
+        gone = queries.pop(position - 1)
+        await self._save_user_queries(interaction.guild, interaction.user.id, queries)
+        await interaction.response.send_message(f"Removed `{gone}`.", ephemeral=True)
+
+    @playlist.command(name="clear", description="Clear your personal playlist.")
+    async def playlist_clear(self, interaction: discord.Interaction) -> None:
+        await self._save_user_queries(interaction.guild, interaction.user.id, [])
+        await interaction.response.send_message("Your playlist is cleared.", ephemeral=True)
+
+    @playlist.command(name="start", description="Start your playlist, or the server default if yours is empty.")
+    async def playlist_start(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer(thinking=True)
+        queries = await self._load_user_queries(interaction.guild, interaction.user.id)
+        label = "your playlist"
+        if not queries:
+            queries = await self._load_default_queries(interaction.guild)
+            label = "server default music"
+        await self._queue_queries(interaction, queries, label)
+
+    @playlist.command(name="share", description="Ask another person in VC to listen to your playlist with you.")
+    @app_commands.describe(member="The person you want to share your playlist with.")
+    async def playlist_share(self, interaction: discord.Interaction, member: discord.Member) -> None:
+        queries = await self._load_user_queries(interaction.guild, interaction.user.id)
+        if not queries:
+            await interaction.response.send_message("Build your playlist first with `/playlist add`.", ephemeral=True)
+            return
+        self._share_requests[(interaction.guild.id, member.id)] = (interaction.user.id, queries)
+        try:
+            await member.send(
+                f"{interaction.user.display_name} wants to share their Zafven music with you in "
+                f"**{interaction.guild.name}**. Join the VC and run `/playlist accept` there to listen together."
+            )
+        except discord.HTTPException:
+            pass
+        await interaction.response.send_message(f"Sent {member.display_name} a listen-together request.", ephemeral=True)
+
+    @playlist.command(name="accept", description="Accept a pending shared-playlist request.")
+    async def playlist_accept(self, interaction: discord.Interaction) -> None:
+        pending = self._share_requests.pop((interaction.guild.id, interaction.user.id), None)
+        if pending is None:
+            await interaction.response.send_message("You do not have a pending music share request.", ephemeral=True)
+            return
+        await interaction.response.defer(thinking=True)
+        sharer_id, queries = pending
+        label = f"shared playlist from <@{sharer_id}>"
+        await self._queue_queries(interaction, queries, label)
+
+    @playlist.command(name="reject", description="Reject a pending shared-playlist request.")
+    async def playlist_reject(self, interaction: discord.Interaction) -> None:
+        self._share_requests.pop((interaction.guild.id, interaction.user.id), None)
+        await interaction.response.send_message("Music share request rejected.", ephemeral=True)
 
     @app_commands.command(name="loop", description="Loop the current song, the whole queue, or turn looping off.")
     @app_commands.describe(mode="What to loop.")
@@ -309,6 +503,39 @@ class MusicCog(commands.Cog):
         self._state(interaction.guild.id).skip_flag = True  # don't let a track-loop replay it
         vc.stop()  # fires the after-callback, which advances the queue
         await interaction.response.send_message("⏭️ skipped.")
+
+    @app_commands.command(name="restartmusic", description="Restart the current song from the beginning.")
+    @app_commands.guild_only()
+    async def restartmusic(self, interaction: discord.Interaction) -> None:
+        if not self._can_control(interaction, allow_requester=True):
+            await self._deny(interaction)
+            return
+        state = self._state(interaction.guild.id)
+        vc = interaction.guild.voice_client
+        if vc is None or state.current is None or not (vc.is_playing() or vc.is_paused()):
+            await interaction.response.send_message("nothing is playing.", ephemeral=True)
+            return
+        state.queue.appendleft(state.current)
+        state.skip_flag = True
+        vc.stop()
+        await interaction.response.send_message("restarting the current song.")
+
+    @app_commands.command(name="musicfreq", description="Set the optional 4-8 Hz tremolo effect for future songs.")
+    @app_commands.describe(hz="0 disables it; 4-8 enables a low-frequency tremolo.")
+    @app_commands.guild_only()
+    async def musicfreq(self, interaction: discord.Interaction, hz: int) -> None:
+        if not self._can_control(interaction):
+            await self._deny(interaction)
+            return
+        if hz != 0 and not 4 <= hz <= 8:
+            await interaction.response.send_message("Use **0** to disable it, or a value from **4** to **8** Hz.", ephemeral=True)
+            return
+        config.MUSIC_TREMOLO_HZ = hz
+        if hz:
+            await interaction.response.send_message(
+                f"Future songs will use a **{hz} Hz** tremolo filter. This changes the signal effect, not anyone's device hardware.")
+        else:
+            await interaction.response.send_message("Future songs will play without the low-frequency tremolo filter.")
 
     @app_commands.command(name="pause", description="Pause playback.")
     @app_commands.guild_only()

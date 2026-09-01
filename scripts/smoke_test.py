@@ -93,6 +93,44 @@ class PsychSmokeTests(unittest.TestCase):
         message.mentions = [a, b]
         self.assertIsNone(cog._psych_target(message))
 
+    def test_occult_cogs_are_not_loaded_at_startup(self) -> None:
+        import bot
+
+        blocked = {
+            "cogs.astrology_cog",
+            "cogs.numerology_cog",
+            "cogs.zodiac_cog",
+            "cogs.predict_cog",
+            "cogs.divination_cog",
+            "cogs.art_cog",
+            "cogs.synastry_cog",
+            "cogs.gematria_cog",
+            "cogs.scheduled_cog",
+        }
+        self.assertTrue(blocked.isdisjoint(bot.INITIAL_COGS))
+
+    def test_bible_reference_detection(self) -> None:
+        from core import bible
+
+        self.assertEqual(bible.find_references("John 3:16 changed me"), ["John 3:16"])
+        self.assertEqual(bible.find_references("read 1 Cor 13:4-7 please"), ["1 Corinthians 13:4-7"])
+
+    def test_music_options_are_mobile_safe(self) -> None:
+        from core import music
+
+        opts = music.ffmpeg_options()
+        self.assertIn("-ar 48000", opts)
+        self.assertIn("-ac 2", opts)
+        self.assertIn("alimiter", opts)
+
+    def test_seven_sins_detector(self) -> None:
+        from cogs.seven_sins_cog import SevenSinsCog
+
+        got = SevenSinsCog._detect("I'm better than everyone here")
+        self.assertIsNotNone(got)
+        assert got is not None
+        self.assertEqual(got[0], "pride")
+
 
 class PsychProfileAsyncTests(unittest.IsolatedAsyncioTestCase):
     async def test_run_breakdown_success(self) -> None:

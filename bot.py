@@ -1,9 +1,9 @@
-"""zafven — an esoteric reading + server-management Discord bot.
+"""zafven - a Discord companion, music, Bible, and server-management bot.
 
-Readings (Vedic, numerology, Chinese zodiac, outlook, vibe) are computed
-deterministically in code and narrated by the Gemini LLM through a single
-ModelGateway. Gemini is required for readings. Server features (join/leave
-logging, inactive cleanup, profanity filter) need no LLM.
+Gemini powers chat, TTS, summaries, and knowledge workflows through a single
+ModelGateway. Server features such as music, Bible reference replies, join/leave
+logging, inactive cleanup, and profanity filtering avoid the removed occult
+reading command surface.
 """
 from __future__ import annotations
 
@@ -21,18 +21,9 @@ logging.basicConfig(level=logging.INFO,
 log = logging.getLogger("zafven")
 
 INITIAL_COGS = [
-    "cogs.astrology_cog",
-    "cogs.numerology_cog",
-    "cogs.zodiac_cog",
-    "cogs.predict_cog",
     "cogs.vibe_cog",
-    "cogs.profile_cog",
     "cogs.imagine_cog",
     "cogs.audit_cog",
-    "cogs.divination_cog",
-    "cogs.art_cog",
-    "cogs.synastry_cog",
-    "cogs.gematria_cog",
     "cogs.tools_cog",
     "cogs.synthesize_cog",
     "cogs.council_cog",
@@ -41,9 +32,9 @@ INITIAL_COGS = [
     "cogs.media_cog",
     "cogs.ranks_cog",
     "cogs.capsule_cog",
-    "cogs.scheduled_cog",
     "cogs.mood_cog",
     "cogs.cipher_cog",
+    "cogs.bible_cog",
     "cogs.chat_cog",
     "cogs.voice_cog",
     "cogs.music_cog",
@@ -58,6 +49,7 @@ INITIAL_COGS = [
     "cogs.antispam_cog",
     "cogs.antiharass_cog",
     "cogs.antimanip_cog",
+    "cogs.seven_sins_cog",
     "cogs.filescan_cog",
     "cogs.report_cog",
     "cogs.help_cog",

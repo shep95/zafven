@@ -73,7 +73,7 @@ class KnowledgeCog(commands.Cog):
         await interaction.followup.send(embed=embed)
 
     @app_commands.command(name="learn", description="Build a knowledge report (from a topic or a YouTube link).")
-    @app_commands.describe(source="A topic (e.g. 'vedic numerology') or a YouTube link.")
+    @app_commands.describe(source="A topic (e.g. 'gardening basics') or a YouTube link.")
     async def learn(self, interaction: discord.Interaction, source: str) -> None:
         await interaction.response.defer(thinking=True)
         vid = youtube.extract_video_id(source)
