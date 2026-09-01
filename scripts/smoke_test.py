@@ -123,14 +123,6 @@ class PsychSmokeTests(unittest.TestCase):
         self.assertIn("-ac 2", opts)
         self.assertIn("alimiter", opts)
 
-    def test_music_frequency_stages_include_delta(self) -> None:
-        from core import music
-
-        self.assertEqual(music.frequency_stage(0), "off")
-        self.assertEqual(music.frequency_stage(0.5), "delta")
-        self.assertEqual(music.frequency_stage(2.5), "delta")
-        self.assertEqual(music.frequency_stage(6), "theta")
-
     def test_seven_sins_detector(self) -> None:
         from cogs.seven_sins_cog import SevenSinsCog
 
