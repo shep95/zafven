@@ -94,10 +94,18 @@ MUSIC_AUDIO_FILTER=aresample=48000:resampler=soxr:precision=28,alimiter=limit=0.
 MUSIC_TREMOLO_HZ=4
 ```
 
-`MUSIC_TREMOLO_HZ` defaults to `4` and can be set to `4` through `8` with
-`/musicfreq`, or `0` to disable.
+`MUSIC_TREMOLO_HZ` defaults to `4` and can be set with `/musicfreq`, or `0` to
+disable. Supported stages:
+
+- `delta` - `0.5 Hz` to `4 Hz`. The deepest stage: the floor of measurable
+  brainwave activity in a living brain, associated with dreamless deep sleep,
+  coma-adjacent states, and rare conscious meditative absorption. This is where
+  the body does deep repair work; human growth hormone peaks here and immune
+  restoration is most aggressive while the conscious mind is essentially offline.
+- `theta` - `4 Hz` to `8 Hz`. The existing low-frequency meditative range.
+
 This applies an FFmpeg tremolo effect to future tracks; it does not change listener
-hardware or operating-system device sample rates.
+hardware, operating-system device sample rates, or make medical claims.
 
 ### Moderation And Server Tools
 

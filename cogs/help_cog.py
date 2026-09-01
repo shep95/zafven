@@ -53,7 +53,7 @@ class HelpCog(commands.Cog):
             value=("`/play <link or search>` - join your VC and play music from YouTube\n"
                    "`/playnext <link>` - jump the line and play a song next\n"
                    "`/restartmusic` - restart the current song\n"
-                   "`/musicfreq <0|4-8>` - optional low-frequency tremolo for future songs\n"
+                   "`/musicfreq <0|0.5-8>` - optional delta/theta tremolo for future songs\n"
                    "`/defaultmusic add|list|remove|clear|start` - server creator default playlist\n"
                    "`/playlist add|list|remove|clear|start|share|accept|reject` - personal playlists\n"
                    "`/loop track|queue|off` / `/queue` / `/shuffle` / `/remove <n>` / `/clear`\n"

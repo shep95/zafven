@@ -14,6 +14,13 @@ def _int(name: str, default: int) -> int:
         return default
 
 
+def _float(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name, "").strip() or default)
+    except ValueError:
+        return default
+
+
 def _csv(name: str, default: str) -> list[str]:
     raw = os.getenv(name, default)
     return [item.strip() for item in raw.split(",") if item.strip()]
@@ -141,7 +148,7 @@ MUSIC_AUDIO_FILTER: str = os.getenv(
 ).strip()
 # Optional low-frequency tremolo rate. This does not change the user's device
 # sample rate; it applies an FFmpeg filter to the music signal. Default 0 = off.
-MUSIC_TREMOLO_HZ: int = _int("MUSIC_TREMOLO_HZ", 4)
+MUSIC_TREMOLO_HZ: float = _float("MUSIC_TREMOLO_HZ", 4.0)
 
 # Bible reference replies
 BIBLE_REPLY_ENABLED: bool = os.getenv("BIBLE_REPLY_ENABLED", "true").strip().lower() in {"1", "true", "yes"}

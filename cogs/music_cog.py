@@ -520,20 +520,23 @@ class MusicCog(commands.Cog):
         vc.stop()
         await interaction.response.send_message("restarting the current song.")
 
-    @app_commands.command(name="musicfreq", description="Set the optional 4-8 Hz tremolo effect for future songs.")
-    @app_commands.describe(hz="0 disables it; 4-8 enables a low-frequency tremolo.")
+    @app_commands.command(name="musicfreq", description="Set the optional brainwave-stage tremolo for future songs.")
+    @app_commands.describe(hz="0 disables it; delta is 0.5-4 Hz, theta is 4-8 Hz.")
     @app_commands.guild_only()
-    async def musicfreq(self, interaction: discord.Interaction, hz: int) -> None:
+    async def musicfreq(self, interaction: discord.Interaction, hz: float) -> None:
         if not self._can_control(interaction):
             await self._deny(interaction)
             return
-        if hz != 0 and not 4 <= hz <= 8:
-            await interaction.response.send_message("Use **0** to disable it, or a value from **4** to **8** Hz.", ephemeral=True)
+        if hz != 0 and not 0.5 <= hz <= 8:
+            await interaction.response.send_message(
+                "Use **0** to disable it, or a value from **0.5** to **8** Hz.", ephemeral=True)
             return
         config.MUSIC_TREMOLO_HZ = hz
         if hz:
+            stage = music.frequency_stage(hz)
             await interaction.response.send_message(
-                f"Future songs will use a **{hz} Hz** tremolo filter. This changes the signal effect, not anyone's device hardware.")
+                f"Future songs will use a **{hz:g} Hz** tremolo filter (**{stage}** stage). "
+                "This changes the signal effect, not anyone's device hardware.")
         else:
             await interaction.response.send_message("Future songs will play without the low-frequency tremolo filter.")
 

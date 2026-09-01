@@ -19,6 +19,11 @@ log = logging.getLogger("zafven.music")
 
 _cookie_tmp: str | None = None  # cached temp cookies file written from MUSIC_COOKIES
 
+FREQUENCY_STAGES = {
+    "delta": (0.5, 4.0, "deepest repair/rest range"),
+    "theta": (4.0, 8.0, "low-frequency meditative range"),
+}
+
 
 def _cookie_path() -> str:
     """A cookies.txt path from MUSIC_COOKIE_FILE, or one written from MUSIC_COOKIES."""
@@ -47,15 +52,26 @@ FFMPEG_BEFORE_OPTIONS = "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max
 def ffmpeg_options() -> str:
     """Build Discord-safe FFmpeg output options from config."""
     filters = [config.MUSIC_AUDIO_FILTER] if config.MUSIC_AUDIO_FILTER else []
-    tremolo = max(0, int(getattr(config, "MUSIC_TREMOLO_HZ", 0) or 0))
+    tremolo = max(0.0, float(getattr(config, "MUSIC_TREMOLO_HZ", 0) or 0))
     if tremolo:
         # Keep the user-requested low-frequency effect bounded. This is a signal
         # filter, not a change to the listener's physical output device.
-        filters.append(f"tremolo=f={max(4, min(tremolo, 8))}:d=0.25")
+        clamped = max(0.5, min(tremolo, 8.0))
+        filters.append(f"tremolo=f={clamped:g}:d=0.25")
     opts = ["-vn", "-ac 2", "-ar 48000"]
     if filters:
         opts.append(f"-af {','.join(filters)}")
     return " ".join(opts)
+
+
+def frequency_stage(hz: float) -> str:
+    """Name the configured frequency stage."""
+    if hz <= 0:
+        return "off"
+    for name, (low, high, _summary) in FREQUENCY_STAGES.items():
+        if low <= hz <= high:
+            return name
+    return "custom"
 
 
 @dataclass
