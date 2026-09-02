@@ -52,7 +52,7 @@ class MusicError(Exception):
 # If we attempt this many rejoins inside the window, 24/7 is flapping (bad perms,
 # stale voice session, …) — give up so the bot doesn't join/leave in a loop.
 _REJOIN_MAX = 3
-_REJOIN_WINDOW = 60.0
+_REJOIN_WINDOW = 120.0  # 3 rejoins in 2 min = flapping → disable 24/7 to stop the loop
 
 
 class MusicCog(commands.Cog):
@@ -139,6 +139,9 @@ class MusicCog(commands.Cog):
             if vc is None:
                 state.current = None
                 return None
+            # Something is genuinely playing/paused — don't interrupt or double-start.
+            if vc.is_playing() or vc.is_paused():
+                return None
             if not state.queue:
                 state.current = None
                 return None
@@ -163,10 +166,27 @@ class MusicCog(commands.Cog):
                 self.bot.loop.call_soon_threadsafe(
                     lambda: self.bot.loop.create_task(self._on_track_end(guild)))
 
-            vc.play(source, after=_after)
+            try:
+                vc.play(source, after=_after)
+            except discord.ClientException as exc:
+                # e.g. already-playing / not-connected — don't let it crash the
+                # advance chain (which would stop the queue and loop dead).
+                log.warning("vc.play failed in %s: %s", guild.id, exc)
+                state.current = None
+                return None
             return track
 
     async def _on_track_end(self, guild: discord.Guild) -> None:
+        try:
+            await self._advance(guild)
+        except Exception:  # noqa: BLE001 — a crash here would freeze the queue + loop
+            log.exception("advance failed in %s; retrying once", guild.id)
+            try:
+                await self._advance(guild)
+            except Exception:  # noqa: BLE001
+                log.exception("advance retry failed in %s", guild.id)
+
+    async def _advance(self, guild: discord.Guild) -> None:
         state = self._state(guild.id)
         # Decide what happens to the track that just finished, based on loop mode.
         finished = state.current
@@ -232,8 +252,11 @@ class MusicCog(commands.Cog):
         else:
             state.queue.append(track)
 
-        # If nothing is playing, kick off playback now.
-        if not vc.is_playing() and not vc.is_paused() and state.current is None:
+        # If nothing is actually playing, start now. Reconcile a stale `current`
+        # first: if the voice client isn't playing, a previous track is dead/stuck,
+        # so clear it — otherwise every new /play would just pile into the queue.
+        if not vc.is_playing() and not vc.is_paused():
+            state.current = None
             started = await self._start_next(interaction.guild)
             if started is not None:
                 await interaction.followup.send(embed=self._now_playing_embed(started))
@@ -711,9 +734,9 @@ class MusicCog(commands.Cog):
 
         try:
             if vc is None:
-                await channel.connect()
+                await channel.connect(timeout=20.0, reconnect=True)
             else:
-                await vc.move_to(channel)
+                await asyncio.wait_for(vc.move_to(channel), timeout=20)
         except (discord.ClientException, discord.HTTPException, asyncio.TimeoutError) as exc:
             log.info("24/7 rejoin failed in %s: %s", guild.id, exc)
 
