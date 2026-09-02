@@ -129,6 +129,13 @@ class MusicCog(commands.Cog):
             return None, "join a voice channel first, then call me in."
         channel = voice.channel
         vc = interaction.guild.voice_client
+        # Heal a stale/dead connection (a leftover from a drop) so it doesn't block plays.
+        if vc is not None and not vc.is_connected():
+            try:
+                await vc.disconnect(force=True)
+            except Exception:  # noqa: BLE001
+                pass
+            vc = None
         try:
             if vc and vc.channel == channel:
                 return vc, None
@@ -152,7 +159,8 @@ class MusicCog(commands.Cog):
         state = self._state(guild.id)
         async with state.lock:
             vc = guild.voice_client
-            if vc is None:
+            # No usable connection → leave the queue intact and bail.
+            if vc is None or not vc.is_connected():
                 state.current = None
                 return None
             # Something is genuinely playing/paused — don't interrupt or double-start.
@@ -161,18 +169,21 @@ class MusicCog(commands.Cog):
             if not state.queue:
                 state.current = None
                 return None
-            track = state.queue.popleft()
-            state.current = track
+
+            # PEEK — do NOT remove the track from the queue until it actually starts
+            # playing. That way a failed vc.play (e.g. a stale connection) never
+            # vanishes the song.
+            track = state.queue[0]
             try:
                 source = discord.FFmpegPCMAudio(
                     track.stream_url,
                     before_options=music.FFMPEG_BEFORE_OPTIONS,
                     options=music.ffmpeg_options(self._hz(guild.id)))
                 source = discord.PCMVolumeTransformer(source, volume=state.volume)
-            except Exception as exc:  # noqa: BLE001 — bad stream / ffmpeg missing
+            except Exception as exc:  # noqa: BLE001 — this track's source is genuinely bad
                 log.warning("failed to build audio source: %s", exc)
+                state.queue.popleft()  # drop the bad track and move on
                 state.current = None
-                # Skip the bad track and try the next one.
                 self.bot.loop.create_task(self._start_next(guild))
                 return None
 
@@ -185,11 +196,13 @@ class MusicCog(commands.Cog):
             try:
                 vc.play(source, after=_after)
             except discord.ClientException as exc:
-                # e.g. already-playing / not-connected — don't let it crash the
-                # advance chain (which would stop the queue and loop dead).
-                log.warning("vc.play failed in %s: %s", guild.id, exc)
-                state.current = None
+                # Not-connected / already-playing — keep the track queued (don't lose
+                # it) and don't crash the advance chain.
+                log.warning("vc.play failed in %s: %s — keeping track queued", guild.id, exc)
                 return None
+            # Started successfully — now it's safe to remove it from the queue.
+            state.queue.popleft()
+            state.current = track
             return track
 
     async def _on_track_end(self, guild: discord.Guild) -> None:
@@ -724,6 +737,25 @@ class MusicCog(commands.Cog):
         self._rejoin_hist.pop(guild.id, None)
         await self._save_247(guild, None)
         log.warning("24/7 disabled in %s: %s", guild.id, reason)
+
+    async def leave_and_reset(self, guild: discord.Guild) -> None:
+        """Public: a DELIBERATE leave. Turn 24/7 off (so we don't rejoin), clear the
+        queue, and disconnect. Called by /vc leave so 'leave' always means leave."""
+        state = self._state(guild.id)
+        state.stay = False
+        state.home_channel_id = None
+        state.queue.clear()
+        state.current = None
+        self._rejoin_hist.pop(guild.id, None)
+        await self._save_247(guild, None)
+        vc = guild.voice_client
+        if vc is not None:
+            try:
+                if vc.is_playing() or vc.is_paused():
+                    vc.stop()
+                await asyncio.wait_for(vc.disconnect(force=True), timeout=15)
+            except (discord.HTTPException, asyncio.TimeoutError):
+                pass
 
     async def _rejoin(self, guild: discord.Guild) -> None:
         """Reconnect to the saved 24/7 channel, with loop protection."""

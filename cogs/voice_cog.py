@@ -89,10 +89,19 @@ class VoiceCog(commands.Cog):
             await interaction.response.send_message("I'm not in a call.", ephemeral=True)
             return
         await interaction.response.defer(ephemeral=True)
-        try:
-            await asyncio.wait_for(client.disconnect(force=True), timeout=DISCONNECT_TIMEOUT)
-        except (discord.HTTPException, asyncio.TimeoutError):
-            pass
+        # A deliberate leave must also switch OFF music 24/7, or the music cog's
+        # disconnect handler will treat this as a drop and rejoin right away.
+        music_cog = self.bot.get_cog("MusicCog")
+        if music_cog is not None:
+            try:
+                await music_cog.leave_and_reset(interaction.guild)  # type: ignore[attr-defined]
+            except Exception:  # noqa: BLE001
+                pass
+        else:
+            try:
+                await asyncio.wait_for(client.disconnect(force=True), timeout=DISCONNECT_TIMEOUT)
+            except (discord.HTTPException, asyncio.TimeoutError):
+                pass
         self._speak.pop(interaction.guild.id, None)
         await interaction.followup.send("👋 Left the call.", ephemeral=True)
 
