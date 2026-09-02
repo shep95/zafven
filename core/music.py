@@ -79,10 +79,10 @@ class Track:
     requester_id: int = 0  # their Discord user id (for self-skip / DJ checks)
 
 
-# Player clients to try, in order. `None` = yt-dlp's own maintained default set
-# (usually the best). The rest are fallbacks that behave differently under
-# YouTube's datacenter bot checks; whichever first yields a stream wins.
-_CLIENT_ATTEMPTS: list[list[str] | None] = [None, ["ios"], ["tv"], ["android"], ["web"]]
+# Player clients to try, in order. `android` first — it's what reliably got past
+# YouTube's datacenter bot check before, so it's primary again; the rest are only
+# fallbacks if android fails. Whichever first yields a stream wins.
+_CLIENT_ATTEMPTS: list[list[str] | None] = [["android"], ["ios"], ["tv"], None, ["web"]]
 
 
 def _ytdl_opts(player_clients: list[str] | None) -> dict:
