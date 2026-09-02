@@ -139,11 +139,15 @@ MUSIC_AUDIO_FILTER: str = os.getenv(
     "MUSIC_AUDIO_FILTER",
     "aresample=48000:resampler=soxr:precision=28,alimiter=limit=0.95"
 ).strip()
-# Optional low-frequency tremolo rate — an amplitude wobble applied to the music
-# signal (NOT a change to the listener's device). It deliberately makes the audio
-# pulse, which sounds like buzzing, so it's OFF by default. Set >0 only if you
-# actually want that effect.
-MUSIC_TREMOLO_HZ: int = _int("MUSIC_TREMOLO_HZ", 0)
+# Low-frequency tremolo — a gentle amplitude pulse on the music signal (NOT a
+# change to the listener's device). Default 4 Hz for the signature "vibe". The
+# harshness is set by the DEPTH, not the rate: 0.25 buzzes, ~0.08 is a subtle
+# breathing pulse. 0 Hz turns the effect off entirely.
+MUSIC_TREMOLO_HZ: int = _int("MUSIC_TREMOLO_HZ", 4)
+try:
+    MUSIC_TREMOLO_DEPTH: float = float(os.getenv("MUSIC_TREMOLO_DEPTH", "0.08") or 0.08)
+except ValueError:
+    MUSIC_TREMOLO_DEPTH = 0.08
 
 # Bible reference replies
 BIBLE_REPLY_ENABLED: bool = os.getenv("BIBLE_REPLY_ENABLED", "true").strip().lower() in {"1", "true", "yes"}

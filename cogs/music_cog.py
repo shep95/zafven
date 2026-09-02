@@ -27,11 +27,12 @@ log = logging.getLogger("zafven.music")
 _NS_247 = "music_247"   # store namespace: {"channel_id": int} per guild
 _NS_DEFAULT_PLAYLIST = "music_default_playlist"  # {"queries": [str]}
 _NS_USER_PLAYLISTS = "music_user_playlists"      # {user_id: {"queries": [str]}}
+_NS_TREMOLO = "music_tremolo"                    # {"hz": int} per guild
 
 
 class _GuildState:
     __slots__ = ("queue", "current", "lock", "channel_id", "volume", "loop_mode",
-                 "skip_flag", "stay", "home_channel_id")
+                 "skip_flag", "stay", "home_channel_id", "tremolo_hz")
 
     def __init__(self) -> None:
         self.queue: collections.deque[music.Track] = collections.deque()
@@ -43,6 +44,7 @@ class _GuildState:
         self.skip_flag: bool = False         # set by /skip so a loop doesn't replay it
         self.stay: bool = False              # 24/7 mode — stay in the VC + rejoin
         self.home_channel_id: int | None = None  # the VC to hold / rejoin in 24/7 mode
+        self.tremolo_hz: int | None = None   # per-guild frequency override (None = config default)
 
 
 class MusicError(Exception):
@@ -82,6 +84,13 @@ class MusicCog(commands.Cog):
         st = self._states.get(guild_id)
         return bool(st and (st.current is not None or st.queue))
 
+    def _hz(self, guild_id: int) -> int:
+        """The frequency (Hz) in effect for this guild: per-guild override, else config default."""
+        st = self._states.get(guild_id)
+        if st is not None and st.tremolo_hz is not None:
+            return st.tremolo_hz
+        return int(getattr(config, "MUSIC_TREMOLO_HZ", 0) or 0)
+
     def _can_control(self, interaction: discord.Interaction, *, allow_requester: bool = False) -> bool:
         """DJ gate: with MUSIC_DJ_ROLE set, only DJs/mods (or, optionally, the
         requester of the current song) may run control commands. Blank = open."""
@@ -105,6 +114,13 @@ class MusicCog(commands.Cog):
         await interaction.response.send_message(
             f"🎧 that's DJ-only — you need the **{config.MUSIC_DJ_ROLE}** role (or mod perms).",
             ephemeral=True)
+
+    async def _save_tremolo(self, guild: discord.Guild, hz: int) -> None:
+        try:
+            s = await store.get_store(guild)
+            await s.set(_NS_TREMOLO, {"hz": int(hz)})
+        except Exception:  # noqa: BLE001 — persistence is best-effort
+            log.exception("failed to persist music frequency")
 
     async def _connect(self, interaction: discord.Interaction):
         """Join the caller's voice channel (or move to it). Returns (vc, error)."""
@@ -151,7 +167,7 @@ class MusicCog(commands.Cog):
                 source = discord.FFmpegPCMAudio(
                     track.stream_url,
                     before_options=music.FFMPEG_BEFORE_OPTIONS,
-                    options=music.ffmpeg_options())
+                    options=music.ffmpeg_options(self._hz(guild.id)))
                 source = discord.PCMVolumeTransformer(source, volume=state.volume)
             except Exception as exc:  # noqa: BLE001 — bad stream / ffmpeg missing
                 log.warning("failed to build audio source: %s", exc)
@@ -551,14 +567,21 @@ class MusicCog(commands.Cog):
             await self._deny(interaction)
             return
         if hz != 0 and not 4 <= hz <= 8:
-            await interaction.response.send_message("Use **0** to disable it, or a value from **4** to **8** Hz.", ephemeral=True)
+            await interaction.response.send_message("use **0** to turn it off, or a value from **4** to **8** Hz.", ephemeral=True)
             return
-        config.MUSIC_TREMOLO_HZ = hz
+        # Per-guild override (persisted), NOT a global config mutation — so it only
+        # affects this server and survives restarts.
+        state = self._state(interaction.guild.id)
+        state.tremolo_hz = hz
+        await self._save_tremolo(interaction.guild, hz)
         if hz:
-            await interaction.response.send_message(
-                f"Future songs will use a **{hz} Hz** tremolo filter. This changes the signal effect, not anyone's device hardware.")
+            msg = (f"🎚️ music frequency set to **{hz} Hz** (a signal effect, not your device). "
+                   "default is 4 Hz.")
         else:
-            await interaction.response.send_message("Future songs will play without the low-frequency tremolo filter.")
+            msg = "🎚️ music frequency turned **off** — plain audio."
+        if state.current:
+            msg += " use `/restartmusic` to apply it to the song playing now."
+        await interaction.response.send_message(msg)
 
     @app_commands.command(name="pause", description="Pause playback.")
     @app_commands.guild_only()
@@ -750,8 +773,12 @@ class MusicCog(commands.Cog):
             try:
                 s = await store.get_store(guild)
                 cid = (s.get(_NS_247, {}) or {}).get("channel_id")
+                saved_hz = (s.get(_NS_TREMOLO, {}) or {}).get("hz")
             except Exception:  # noqa: BLE001
                 cid = None
+                saved_hz = None
+            if saved_hz is not None:
+                self._state(guild.id).tremolo_hz = int(saved_hz)
             if cid:
                 state = self._state(guild.id)
                 state.stay = True
