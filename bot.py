@@ -52,6 +52,7 @@ INITIAL_COGS = [
     "cogs.seven_sins_cog",
     "cogs.filescan_cog",
     "cogs.report_cog",
+    "cogs.invites_cog",
     "cogs.help_cog",
 ]
 

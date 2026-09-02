@@ -63,6 +63,8 @@ class HelpCog(commands.Cog):
         embed.add_field(
             name="Community & moderation",
             value=("`/rank [member]` / `/leaderboard` - XP & levels\n"
+                   "`/invite` - personal invite link · `/invites [member]` · `/invitelb` - "
+                   "referral leaderboard (monthly Nitro for the top inviter)\n"
                    "`/capsule <message> <deliver_on> [public]` - send a message to the future\n"
                    "`/mood` - aggregate read of the server's current vibe\n"
                    "`/cipher` (mod) / `/solve <answer>` - cipher puzzle events\n"

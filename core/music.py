@@ -100,6 +100,9 @@ def _ytdl_opts(player_clients: list[str] | None) -> dict:
     cookie = _cookie_path()
     if cookie:
         opts["cookiefile"] = cookie
+    proxy = getattr(config, "MUSIC_PROXY", "").strip()
+    if proxy:  # route requests through a residential proxy to dodge datacenter blocks
+        opts["proxy"] = proxy
     return opts
 
 

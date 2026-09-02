@@ -127,6 +127,9 @@ MUSIC_COOKIE_FILE: str = os.getenv("MUSIC_COOKIE_FILE", "").strip()
 # Easier on hosts with no filesystem: paste the whole cookies.txt CONTENT here and
 # it's written to a temp file at runtime. MUSIC_COOKIE_FILE takes precedence.
 MUSIC_COOKIES: str = os.getenv("MUSIC_COOKIES", "")
+# Optional proxy URL (e.g. http://user:pass@host:port) for yt-dlp — routing
+# through a residential proxy also gets past YouTube's datacenter bot check.
+MUSIC_PROXY: str = os.getenv("MUSIC_PROXY", "").strip()
 # Optional role name that gates the control commands (skip/stop/pause/loop/…) so
 # only DJs (or mods) can touch others' music. Blank = anyone can control.
 MUSIC_DJ_ROLE: str = os.getenv("MUSIC_DJ_ROLE", "").strip()
@@ -216,6 +219,16 @@ RANK_LADDER: list[str] = _csv("RANK_LADDER", "Helper:1,Regular:3,Trusted:6,Stewa
 DAILY_ENABLED: bool = os.getenv("DAILY_ENABLED", "false").strip().lower() in {"1", "true", "yes"}
 DAILY_CHANNEL: str = os.getenv("DAILY_CHANNEL", "daily").strip()
 DAILY_HOUR_UTC: int = _int("DAILY_HOUR_UTC", 13)
+
+
+# ── Welcome DMs + invite tracking / referral leaderboard ─────────────────
+INVITES_ENABLED: bool = os.getenv("INVITES_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+WELCOME_DM_ENABLED: bool = os.getenv("WELCOME_DM_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+# Custom welcome DM text (blank = built-in #houseofasher message). The member's
+# personal invite link is appended automatically.
+WELCOME_DM_MESSAGE: str = os.getenv("WELCOME_DM_MESSAGE", "").strip()
+# Channel where "X invited Y" join credits are posted. Blank = don't announce.
+INVITE_LOG_CHANNEL: str = os.getenv("INVITE_LOG_CHANNEL", "invite-log").strip()
 
 
 def validate() -> list[str]:
