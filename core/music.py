@@ -106,29 +106,52 @@ def _ytdl_opts(player_clients: list[str] | None) -> dict:
     return opts
 
 
-def _extract(query: str) -> tuple[dict | None, str | None]:
-    """Try each player client until one yields a playable stream. (info, error)."""
+def _first_entry(info: dict | None) -> dict | None:
+    """Collapse a search/playlist result down to its first real entry."""
+    if not info:
+        return None
+    if "entries" in info:
+        entries = [e for e in (info.get("entries") or []) if e]
+        return entries[0] if entries else None
+    return info
+
+
+def _try(query: str, opts: dict) -> tuple[dict | None, str | None]:
     import yt_dlp  # imported lazily so the bot boots even if yt-dlp isn't installed
+    try:
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = _first_entry(ydl.extract_info(query, download=False))
+    except Exception as exc:  # noqa: BLE001
+        return None, str(exc)
+    if info and info.get("url"):
+        return info, None
+    return None, "no matches found" if info is None else "no playable audio stream"
+
+
+def _is_url(query: str) -> bool:
+    return query.lower().startswith(("http://", "https://"))
+
+
+def _extract(query: str) -> tuple[dict | None, str | None]:
+    """Resolve via YouTube (trying each player client); if that bot-checks/fails on
+    a plain search, fall back to SoundCloud so music still works without cookies."""
     last_err: str | None = None
+    # 1) YouTube — direct URL or default ytsearch, across the client fallbacks.
     for clients in _CLIENT_ATTEMPTS:
-        try:
-            with yt_dlp.YoutubeDL(_ytdl_opts(clients)) as ydl:
-                info = ydl.extract_info(query, download=False)
-        except Exception as exc:  # noqa: BLE001 — try the next client
-            last_err = str(exc)
-            continue
-        if not info:
-            last_err = "no result"
-            continue
-        if "entries" in info:  # search results / playlist → first real entry
-            entries = [e for e in (info.get("entries") or []) if e]
-            if not entries:
-                last_err = "no matches found"
-                continue
-            info = entries[0]
-        if info.get("url"):
+        info, err = _try(query, _ytdl_opts(clients))
+        if info:
             return info, None
-        last_err = "no playable audio stream"
+        last_err = err
+
+    # 2) Bare search that YouTube wouldn't serve → try SoundCloud (no datacenter
+    #    bot check). Direct YouTube links can't fall back — they need cookies/proxy.
+    if not _is_url(query) and getattr(config, "MUSIC_SOUNDCLOUD_FALLBACK", True):
+        opts = _ytdl_opts(None)
+        opts["default_search"] = "scsearch"
+        info, err = _try(query, opts)
+        if info:
+            return info, None
+        last_err = err or last_err
     return None, last_err
 
 
@@ -158,8 +181,9 @@ def friendly_error(reason: str | None) -> str:
     """Turn a raw yt-dlp error into a short, actionable line for chat."""
     r = (reason or "").lower()
     if "sign in" in r or "not a bot" in r or "confirm you" in r:
-        return ("YouTube is blocking this server with a bot check. add a cookies.txt via "
-                "`MUSIC_COOKIE_FILE` to fix it (see the README).")
+        return ("YouTube is blocking this host with a bot check. try a plain **song search** "
+                "instead of a YouTube link — searches fall back to SoundCloud automatically. "
+                "to make YouTube *links* work, add cookies via `MUSIC_COOKIES` (see the README).")
     if "age" in r and "restrict" in r:
         return "that video is age-restricted — YouTube needs a `MUSIC_COOKIE_FILE` (cookies) to play it."
     if "private" in r:

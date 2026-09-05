@@ -130,6 +130,9 @@ MUSIC_COOKIES: str = os.getenv("MUSIC_COOKIES", "")
 # Optional proxy URL (e.g. http://user:pass@host:port) for yt-dlp — routing
 # through a residential proxy also gets past YouTube's datacenter bot check.
 MUSIC_PROXY: str = os.getenv("MUSIC_PROXY", "").strip()
+# When YouTube bot-checks the host, fall back to SoundCloud for song SEARCHES so
+# music still works without cookies. (Direct YouTube links can't fall back.)
+MUSIC_SOUNDCLOUD_FALLBACK: bool = os.getenv("MUSIC_SOUNDCLOUD_FALLBACK", "true").strip().lower() in {"1", "true", "yes"}
 # Optional role name that gates the control commands (skip/stop/pause/loop/…) so
 # only DJs (or mods) can touch others' music. Blank = anyone can control.
 MUSIC_DJ_ROLE: str = os.getenv("MUSIC_DJ_ROLE", "").strip()
