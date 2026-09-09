@@ -132,6 +132,29 @@ def _is_url(query: str) -> bool:
     return query.lower().startswith(("http://", "https://"))
 
 
+def _is_youtube_url(query: str) -> bool:
+    q = query.lower()
+    return "youtube.com/watch" in q or "youtu.be/" in q or "youtube.com/shorts" in q or "music.youtube.com" in q
+
+
+def _youtube_title(url: str) -> str | None:
+    """Fetch a YouTube video's title via the public oembed endpoint. oembed isn't
+    bot-checked like the player API, so this works even when extraction is blocked —
+    letting us then find the same song on SoundCloud."""
+    import json
+    import urllib.parse
+    import urllib.request
+    try:
+        api = "https://www.youtube.com/oembed?" + urllib.parse.urlencode({"url": url, "format": "json"})
+        req = urllib.request.Request(api, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310 — fixed https host
+            data = json.loads(resp.read().decode("utf-8"))
+        title = (data.get("title") or "").strip()
+        return title or None
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _extract(query: str) -> tuple[dict | None, str | None]:
     """Resolve via YouTube (trying each player client); if that bot-checks/fails on
     a plain search, fall back to SoundCloud so music still works without cookies."""
@@ -143,15 +166,22 @@ def _extract(query: str) -> tuple[dict | None, str | None]:
             return info, None
         last_err = err
 
-    # 2) Bare search that YouTube wouldn't serve → try SoundCloud (no datacenter
-    #    bot check). Direct YouTube links can't fall back — they need cookies/proxy.
-    if not _is_url(query) and getattr(config, "MUSIC_SOUNDCLOUD_FALLBACK", True):
-        opts = _ytdl_opts(None)
-        opts["default_search"] = "scsearch"
-        info, err = _try(query, opts)
-        if info:
-            return info, None
-        last_err = err or last_err
+    # 2) YouTube bot-checked us → find the song on SoundCloud instead (no datacenter
+    #    bot check). For a bare search we use the words; for a YouTube LINK we fetch
+    #    its title via oembed and search that.
+    if getattr(config, "MUSIC_SOUNDCLOUD_FALLBACK", True):
+        sc_query: str | None = None
+        if not _is_url(query):
+            sc_query = query
+        elif _is_youtube_url(query):
+            sc_query = _youtube_title(query)
+        if sc_query:
+            opts = _ytdl_opts(None)
+            opts["default_search"] = "scsearch"
+            info, err = _try(sc_query, opts)
+            if info:
+                return info, None
+            last_err = err or last_err
     return None, last_err
 
 

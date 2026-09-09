@@ -268,6 +268,9 @@ class MusicCog(commands.Cog):
         if len(state.queue) >= config.MUSIC_MAX_QUEUE:
             await interaction.followup.send(f"❌ the queue is full ({config.MUSIC_MAX_QUEUE}).")
             return
+        # A deliberate /play is normal playback — clear any leftover loop (e.g. from a
+        # /playlist or /defaultmusic start) so your song doesn't get stuck repeating.
+        state.loop_mode = "off"
 
         track, reason = await music.resolve(query.strip(), requester=interaction.user.display_name,
                                             requester_id=interaction.user.id)
@@ -746,6 +749,7 @@ class MusicCog(commands.Cog):
         state.home_channel_id = None
         state.queue.clear()
         state.current = None
+        state.loop_mode = "off"
         self._rejoin_hist.pop(guild.id, None)
         await self._save_247(guild, None)
         vc = guild.voice_client
