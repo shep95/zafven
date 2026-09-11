@@ -25,6 +25,12 @@ log = logging.getLogger("zafven.chat")
 
 REMEMBER_RE = re.compile(r"\[\[remember:\s*(.+?)\]\]", re.IGNORECASE | re.DOTALL)
 LEARN_RE = re.compile(r"\[\[learn:\s*(.+?)\]\]", re.IGNORECASE | re.DOTALL)
+# Behavioral feedback about HOW she worked (not a factual correction) — routed to
+# the adaptive pattern creator as a scoped candidate pattern (intelligence layer).
+FEEDBACK_RE = re.compile(
+    r"\b(stop|don'?t|please don'?t|quit|you (?:always|keep|never)|too (?:long|verbose|much)|"
+    r"less|more concise|be concise|get to the point|stop (?:doing|being)|instead of)\b",
+    re.IGNORECASE)
 PSYCH_REQUEST_RE = re.compile(
     r"\b(psych(?:olog(?:y|ical(?:ly)?)?)?|psycho|mental(?:ly)?|personality|break\s*down|"
     r"breakdown|analyze|analysis|profile|read\s+(?:them|him|her))\b",
@@ -192,12 +198,28 @@ class ChatCog(commands.Cog):
         state = self._mood_for(message.guild.id, message.author.id, message.content, addressed)
         mood = emotions.directive(state)
 
+        # Asherin intelligence layer: assemble scoped context (conversation state +
+        # user/project memory + relevant patterns + global patterns). Fail-open.
+        intel_block = ""
+        intel = getattr(self.bot, "intelligence", None)
+        if intel is not None:
+            try:
+                resolved = await intel.resolve(
+                    message.guild, channel_id=message.channel.id, user_id=message.author.id,
+                    query=message.content, domain="chat")
+                intel_block = resolved.to_prompt()
+            except Exception:  # noqa: BLE001 — intelligence must never break chat
+                intel_block = ""
+
         try:
             async with message.channel.typing():
                 transcript = await self._context(message)
+                system_prompt = self._system(message.author.display_name, notes, directive, mood,
+                                             vibe, custom, lessons)
+                if intel_block:
+                    system_prompt += "\n\n" + intel_block
                 raw = await self.bot.gateway.narrate(  # type: ignore[attr-defined]
-                    self._system(message.author.display_name, notes, directive, mood, vibe, custom,
-                                 lessons),
+                    system_prompt,
                     transcript, web_search=bool(SEARCH_HINT_RE.search(message.content)),
                     max_tokens=900, model=config.CHAT_MODEL)
         except GatewayError as exc:
@@ -225,8 +247,30 @@ class ChatCog(commands.Cog):
                 pass
 
         for note in remembered:
+            # Route a proposed memory through the promotion gate (scope + ON/OFF).
+            # Falls back to the legacy note store when the intelligence layer is off.
+            routed = False
+            if intel is not None:
+                try:
+                    from core.intelligence.scope import Scope as _Scope
+                    await intel.learn_memory(message.guild, note, user_id=message.author.id,
+                                             hinted_scope=_Scope.USER)
+                    routed = True
+                except Exception:  # noqa: BLE001
+                    routed = False
+            if not routed:
+                try:
+                    await chat_memory.add_note(message.guild, message.author.id, note)
+                except Exception:  # noqa: BLE001
+                    pass
+
+        # Behavioral feedback → adaptive pattern candidate (only when addressed, to
+        # avoid minting patterns from ambient chatter). The model proposes; the gate
+        # decides scope and never turns one correction into a global truth.
+        if intel is not None and addressed and FEEDBACK_RE.search(message.content):
             try:
-                await chat_memory.add_note(message.guild, message.author.id, note)
+                await intel.learn_feedback(
+                    message.guild, message.content, context=visible[:400], domain="chat")
             except Exception:  # noqa: BLE001
                 pass
 

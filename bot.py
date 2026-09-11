@@ -15,6 +15,7 @@ from discord.ext import commands
 
 import config
 from core.model_gateway import ModelGateway
+from core.intelligence import Intelligence
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -53,6 +54,7 @@ INITIAL_COGS = [
     "cogs.filescan_cog",
     "cogs.report_cog",
     "cogs.invites_cog",
+    "cogs.intelligence_cog",
     "cogs.help_cog",
 ]
 
@@ -91,6 +93,10 @@ class Zafven(commands.Bot):
     def __init__(self) -> None:
         super().__init__(command_prefix="!", intents=build_intents(), help_command=None)
         self.gateway = ModelGateway()
+        # The Asherin adaptive-intelligence layer (scoped memory + pattern
+        # intelligence + learning) sits above the gateway. Fail-open: if disabled or
+        # broken, chat still works — cogs guard on `getattr(bot, "intelligence", None)`.
+        self.intelligence = Intelligence(self.gateway) if config.INTELLIGENCE_ENABLED else None
 
     async def setup_hook(self) -> None:
         _load_opus()
@@ -115,6 +121,13 @@ class Zafven(commands.Bot):
     async def on_ready(self) -> None:
         log.info("zafven online as %s (id=%s)", self.user, self.user.id if self.user else "?")
         await self.change_presence(activity=discord.Game(name="/help • reading the patterns"))
+        # Bind the global (cross-guild) pattern registry to a host guild store once
+        # the bot knows what guilds it's in. Safe if global learning is disabled.
+        if self.intelligence is not None and config.GLOBAL_LEARNING_ENABLED:
+            try:
+                await self.intelligence.ensure_global(self)
+            except Exception:  # noqa: BLE001
+                log.exception("global learning bind failed")
 
     async def on_app_command_error(self, interaction: discord.Interaction,
                                    error: discord.app_commands.AppCommandError) -> None:

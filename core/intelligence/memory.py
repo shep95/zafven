@@ -93,6 +93,9 @@ def classify(text: str, hinted_scope: Scope | None = None) -> tuple[Scope, str, 
     if _PROJECT_RE.search(t):
         scope = scope or Scope.PROJECT
         kind = "fact"
+        # an explicitly-stated fact about the server ("this server uses X", "our
+        # rules are…") is durable and self-declared → promote it immediately.
+        immediate = True
     if _IDENTITY_RE.search(t):
         scope = scope or Scope.USER
         kind = "identity"
