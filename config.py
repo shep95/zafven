@@ -234,6 +234,30 @@ WELCOME_DM_MESSAGE: str = os.getenv("WELCOME_DM_MESSAGE", "").strip()
 INVITE_LOG_CHANNEL: str = os.getenv("INVITE_LOG_CHANNEL", "invite-log").strip()
 
 
+# ── Asherin adaptive intelligence layer ──────────────────────────────────
+# Master switch for the scoped-memory + pattern-intelligence + learning layer.
+INTELLIGENCE_ENABLED: bool = os.getenv("INTELLIGENCE_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+# Whether persistent USER memory is ON by default (each user can still /memory off).
+MEMORY_USER_DEFAULT_ON: bool = os.getenv("MEMORY_USER_DEFAULT_ON", "true").strip().lower() in {"1", "true", "yes"}
+# Whether per-server (PROJECT) memory is ON by default.
+MEMORY_PROJECT_DEFAULT_ON: bool = os.getenv("MEMORY_PROJECT_DEFAULT_ON", "true").strip().lower() in {"1", "true", "yes"}
+# Max durable memory items kept per user / per server.
+MEMORY_USER_MAX: int = _int("MEMORY_USER_MAX", 40)
+MEMORY_PROJECT_MAX: int = _int("MEMORY_PROJECT_MAX", 200)
+# Let a server point zafven at its OWN model API key (stored per guild, never put
+# in prompts/patterns/memory/logs). OFF by default: storing third-party keys in
+# Discord-backed storage is opt-in and not KMS-grade encryption.
+PROVIDER_USER_KEYS_ENABLED: bool = os.getenv("PROVIDER_USER_KEYS_ENABLED", "false").strip().lower() in {"1", "true", "yes"}
+# Global (cross-guild) pattern learning. The abstracted, privacy-filtered monthly
+# pipeline that promotes reusable mechanisms — never raw user/project data.
+GLOBAL_LEARNING_ENABLED: bool = os.getenv("GLOBAL_LEARNING_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+# Which guild's store hosts the global pattern registry (0 = use GUILD_ID, else the
+# first guild the bot is in). Set this to a control server you own for stability.
+GLOBAL_DATA_GUILD: int = _int("GLOBAL_DATA_GUILD", 0)
+# Run the monthly global-learning cycle automatically (a scheduled task loop).
+GLOBAL_LEARNING_AUTORUN: bool = os.getenv("GLOBAL_LEARNING_AUTORUN", "true").strip().lower() in {"1", "true", "yes"}
+
+
 def validate() -> list[str]:
     """Return a list of fatal config problems (empty == OK)."""
     problems = []

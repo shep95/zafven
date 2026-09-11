@@ -27,14 +27,26 @@ class GatewayError(RuntimeError):
 
 
 class ModelGateway:
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        model: str | None = None,
+    ) -> None:
         self._session: aiohttp.ClientSession | None = None
+        # Optional overrides let a second gateway run on a user-supplied credential
+        # (see intelligence.gateway) without touching the built-in one. Defaults keep
+        # every existing `ModelGateway()` caller on the configured Gemini key.
+        self._api_key = (api_key or config.GEMINI_API_KEY).strip()
+        self._base_url = (base_url or config.GEMINI_BASE_URL).strip().rstrip("/")
+        self._model_default = (model or config.GEMINI_MODEL).strip()
 
     async def start(self) -> None:
         if self._session is None or self._session.closed:
             self._session = aiohttp.ClientSession(
                 headers={
-                    "x-goog-api-key": config.GEMINI_API_KEY,
+                    "x-goog-api-key": self._api_key,
                     "Content-Type": "application/json",
                 },
                 timeout=aiohttp.ClientTimeout(total=config.GEMINI_TIMEOUT),
@@ -163,7 +175,7 @@ class ModelGateway:
                 },
             },
         }
-        url = f"{config.GEMINI_BASE_URL}/models/{config.GEMINI_TTS_MODEL}:generateContent"
+        url = f"{self._base_url}/models/{config.GEMINI_TTS_MODEL}:generateContent"
         assert self._session is not None
         async with self._session.post(url, json=payload) as resp:
             if resp.status != 200:
@@ -193,7 +205,7 @@ class ModelGateway:
         return config.GEMINI_WEB_SEARCH in {"auto", "on"}
 
     async def _post_with_retry(self, payload: dict, attempts: int = 3, model: str | None = None) -> str:
-        url = f"{config.GEMINI_BASE_URL}/models/{model or config.GEMINI_MODEL}:generateContent"
+        url = f"{self._base_url}/models/{model or self._model_default}:generateContent"
         last_err: Exception | None = None
         for attempt in range(1, attempts + 1):
             try:
