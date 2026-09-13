@@ -234,6 +234,12 @@ WELCOME_DM_MESSAGE: str = os.getenv("WELCOME_DM_MESSAGE", "").strip()
 INVITE_LOG_CHANNEL: str = os.getenv("INVITE_LOG_CHANNEL", "invite-log").strip()
 
 
+# ── Acoustic observation platform (/listen) ──────────────────────────────
+# Deterministic control/storage/search/audit layer for authorized audio sessions.
+# The bot cannot read your mic — capture needs a separate client, and transcription
+# needs an external engine (off by default → sessions produce no transcripts).
+LISTEN_ENABLED: bool = os.getenv("LISTEN_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+
 # ── Personal safety companion (check-ins + SOS; no recording) ────────────
 SAFETY_ENABLED: bool = os.getenv("SAFETY_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
 # Optional channel name where SOS/overdue alerts are ALSO posted (blank = DM only).

@@ -55,6 +55,7 @@ INITIAL_COGS = [
     "cogs.report_cog",
     "cogs.invites_cog",
     "cogs.safety_cog",
+    "cogs.listen_cog",
     "cogs.intelligence_cog",
     "cogs.help_cog",
 ]

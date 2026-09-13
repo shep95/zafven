@@ -412,5 +412,87 @@ class SafetyCompanionTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("recording", overdue.lower())
 
 
+class ListenPlatformTests(unittest.IsolatedAsyncioTestCase):
+    """Deterministic acoustic-observation control layer (spec §5/§37/§77 + honesty)."""
+
+    def test_session_state_machine_rejects_illegal(self) -> None:
+        from core.listen.session import Session, SessionState, apply_transition, TransitionError, can_transition
+        s = Session(user_id=1)
+        self.assertTrue(can_transition(SessionState.CREATED, SessionState.AUTHORIZED))
+        self.assertFalse(can_transition(SessionState.CREATED, SessionState.ACTIVE))
+        with self.assertRaises(TransitionError):
+            apply_transition(s, SessionState.ACTIVE)   # skips AUTHORIZED
+
+    def test_consent_gate_blocks_active(self) -> None:
+        from core.listen.session import Session, SessionState, apply_transition, TransitionError
+        s = Session(user_id=1)
+        apply_transition(s, SessionState.AUTHORIZED)
+        with self.assertRaises(TransitionError):
+            apply_transition(s, SessionState.ACTIVE)   # no consent yet
+        s.consent_ack = True
+        apply_transition(s, SessionState.ACTIVE)
+        self.assertEqual(s.state, SessionState.ACTIVE)
+
+    def test_epistemic_never_auto_upgrades_to_fact(self) -> None:
+        from core.listen.epistemic import Epistemic, can_upgrade, estimate
+        self.assertFalse(can_upgrade(Epistemic.ESTIMATE, Epistemic.FACT))
+        self.assertTrue(can_upgrade(Epistemic.OBSERVATION, Epistemic.INTERPRETATION))
+        e = estimate("age 25-35", 0.4)
+        self.assertEqual(e.epistemic, Epistemic.ESTIMATE)
+        self.assertIsNotNone(e.confidence)
+
+    def test_null_engines_do_not_fabricate(self) -> None:
+        from core.listen.interfaces import EngineRegistry
+        from core.listen.epistemic import Epistemic
+        reg = EngineRegistry()
+        self.assertFalse(reg.any_available())
+        result = reg.transcription.transcribe("audio_ref")
+        self.assertEqual(result.text.epistemic, Epistemic.UNKNOWN)
+        self.assertIsNone(result.text.value)     # nothing invented
+
+    def test_retention_expiry_and_deletion_audit(self) -> None:
+        from core.listen.retention import RetentionPolicy, deletion_audit, NEVER, FOREVER
+        import time as _t
+        pol = RetentionPolicy(raw_audio_seconds=3600, transcript_seconds=NEVER)
+        now = int(_t.time())
+        self.assertFalse(pol.is_expired("raw_audio", now, now))
+        self.assertTrue(pol.is_expired("raw_audio", now - 4000, now))
+        self.assertTrue(pol.is_expired("transcript", now, now))   # NEVER retain
+        pol2 = RetentionPolicy(transcript_seconds=FOREVER)
+        self.assertFalse(pol2.is_expired("transcript", now - 10**9, now))
+        audit = deletion_audit("transcript", "tr_1")
+        self.assertEqual(audit["item_id"], "tr_1")
+        self.assertNotIn("content", audit)        # only a reference, never content
+
+    async def test_controller_lifecycle_and_search(self) -> None:
+        from core.listen.controller import ListenController
+        from core.listen.session import SessionState
+        ctl = ListenController(_FakeStore())
+        s = await ctl.create_session(42)
+        await ctl.authorize(s)
+        await ctl.acknowledge_consent(s)
+        await ctl.activate(s)
+        self.assertEqual(ctl.active_session_for(42).state, SessionState.ACTIVE)
+        # a capture client + engine would ingest transcripts; simulate one row
+        await ctl.ingest_transcript({"session_id": s.id, "user_id": 42, "speaker_id": "user_001",
+                                     "text": "project alpha meeting notes", "ts": int(__import__('time').time())})
+        self.assertTrue(ctl.search("project alpha"))
+        self.assertFalse(ctl.search("nonexistent term xyz"))
+        await ctl.stop(s)
+        self.assertEqual(ctl.get_session(s.id).state, SessionState.COMPLETED)
+        # erasure
+        removed = await ctl.delete_session_data(s.id)
+        self.assertEqual(removed, 1)
+        self.assertFalse(ctl.search("project alpha"))
+
+    async def test_timestamp_correction_preserves_original(self) -> None:
+        from core.listen.events import Event
+        e = Event(event_type="x", timestamp_start=1000)
+        e.correct_timestamp(1200, "clock drift")
+        self.assertEqual(e.timestamp_start, 1000)      # original preserved (§58)
+        self.assertEqual(e.timestamp_corrected, 1200)
+        self.assertEqual(e.correction_reason, "clock drift")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
