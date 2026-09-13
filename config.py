@@ -234,6 +234,13 @@ WELCOME_DM_MESSAGE: str = os.getenv("WELCOME_DM_MESSAGE", "").strip()
 INVITE_LOG_CHANNEL: str = os.getenv("INVITE_LOG_CHANNEL", "invite-log").strip()
 
 
+# ── Personal safety companion (check-ins + SOS; no recording) ────────────
+SAFETY_ENABLED: bool = os.getenv("SAFETY_ENABLED", "true").strip().lower() in {"1", "true", "yes"}
+# Optional channel name where SOS/overdue alerts are ALSO posted (blank = DM only).
+SAFETY_ALERT_CHANNEL: str = os.getenv("SAFETY_ALERT_CHANNEL", "").strip()
+# Add an honest note about /safety to the new-member welcome DM.
+SAFETY_IN_WELCOME_DM: bool = os.getenv("SAFETY_IN_WELCOME_DM", "true").strip().lower() in {"1", "true", "yes"}
+
 # ── Asherin adaptive intelligence layer ──────────────────────────────────
 # Master switch for the scoped-memory + pattern-intelligence + learning layer.
 INTELLIGENCE_ENABLED: bool = os.getenv("INTELLIGENCE_ENABLED", "true").strip().lower() in {"1", "true", "yes"}

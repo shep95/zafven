@@ -54,6 +54,7 @@ INITIAL_COGS = [
     "cogs.filescan_cog",
     "cogs.report_cog",
     "cogs.invites_cog",
+    "cogs.safety_cog",
     "cogs.intelligence_cog",
     "cogs.help_cog",
 ]

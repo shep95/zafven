@@ -105,6 +105,8 @@ class InvitesCog(commands.Cog):
         base = config.WELCOME_DM_MESSAGE or _DEFAULT_WELCOME
         if link:
             base += f"\n\nyour personal invite link: {link}"
+        if getattr(config, "SAFETY_ENABLED", False) and getattr(config, "SAFETY_IN_WELCOME_DM", False):
+            base += "\n\n" + _SAFETY_BLURB
         return base
 
     # ── member join: welcome DM + attribution ────────────────────────────
@@ -235,6 +237,16 @@ _DEFAULT_WELCOME = (
     "welcome to the **#houseofasher** community and digital empire — we're so glad you're here. 🖤\n\n"
     "if you'd like to help us grow, share your personal invite link with people. "
     "each month, whoever's invite link brings in the most new members wins **nitro from asher himself**."
+)
+
+# Honest, opt-in safety note appended to the welcome DM. It describes the check-in
+# companion truthfully — no recording, no surveillance, no false privacy claims.
+_SAFETY_BLURB = (
+    "🛡️ **a heads up from asher — a safety feature for you:** if you're ever walking somewhere "
+    "and want someone to know you got there okay, use `/safety`. you pick trusted people, start a "
+    "timed check-in, and if you don't mark yourself safe in time, i quietly alert the people you "
+    "chose. `/safety sos` alerts them right away. it does **not** record you or listen to you — "
+    "it's just a check-in you control. type `/safety help` to see how it works."
 )
 
 

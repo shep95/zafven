@@ -369,5 +369,48 @@ class IntelligenceGlobalTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(gl.manifests())
 
 
+class SafetyCompanionTests(unittest.IsolatedAsyncioTestCase):
+    """Personal safety companion: consent-based check-ins/SOS, no recording."""
+
+    async def test_contacts_add_remove_and_limits(self) -> None:
+        from core import safety
+        store = _FakeStore()
+        ok, _ = await safety.add_contact(store, user_id=1, contact_id=2)
+        self.assertTrue(ok)
+        self.assertEqual(safety.get_contacts(store, 1), [2])
+        # can't add self
+        ok2, _why = await safety.add_contact(store, user_id=1, contact_id=1)
+        self.assertFalse(ok2)
+        # remove
+        self.assertTrue(await safety.remove_contact(store, 1, 2))
+        self.assertEqual(safety.get_contacts(store, 1), [])
+
+    async def test_checkin_lifecycle(self) -> None:
+        from core import safety
+        store = _FakeStore()
+        entry = await safety.start_checkin(store, user_id=5, minutes=30, note="walking home")
+        self.assertEqual(entry["minutes"], 30)
+        self.assertIsNotNone(safety.get_checkin(store, 5))
+        self.assertGreater(safety.remaining_seconds(entry), 0)
+        self.assertTrue(await safety.clear_checkin(store, 5))
+        self.assertIsNone(safety.get_checkin(store, 5))
+
+    async def test_minutes_clamped(self) -> None:
+        from core import safety
+        store = _FakeStore()
+        big = await safety.start_checkin(store, 9, minutes=99999)
+        self.assertLessEqual(big["minutes"], safety.MAX_MINUTES)
+
+    def test_alert_text_is_consent_framed_and_not_recording(self) -> None:
+        from core import safety
+        overdue = safety.alert_text("Alex", kind="overdue", note="near 5th st", minutes=20)
+        self.assertIn("Alex", overdue)
+        self.assertIn("emergency services", overdue.lower())
+        sos = safety.alert_text("Alex", kind="sos")
+        self.assertIn("SOS", sos)
+        # the tool never claims to record — the alert is a check-in, not surveillance
+        self.assertNotIn("recording", overdue.lower())
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
