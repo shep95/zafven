@@ -38,7 +38,7 @@ class HelpCog(commands.Cog):
             name="Just talk to her",
             value=("Mention Zafven or reply to her to ask questions, look things up, joke, and banter.\n"
                    "When she uses messages from other readable channels, she quotes the channel and sender.\n"
-                   "She remembers what you tell her. `/memory` shows it, `/forget` wipes it.\n"
+                   "She remembers what you tell her. `/memory status` shows it, `/memory off` stops it, `/memory forget` wipes it.\n"
                    "`/feelings` shows her current mood toward you. `/culture view` shows server vibe.\n"
                    "`/teach <topic> <fact>`, `/taught`, and `/unlearn` manage learned server facts.\n"
                    "Admins can tune style with `/persona set` and add custom knowledge with `/brain add`."),

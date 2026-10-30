@@ -392,27 +392,6 @@ class ChatCog(commands.Cog):
                 break
         return terms
 
-    @app_commands.command(name="memory", description="See what Zafven remembers about you.")
-    @app_commands.guild_only()
-    async def memory(self, interaction: discord.Interaction) -> None:
-        notes = await chat_memory.get_notes(interaction.guild, interaction.user.id)
-        if not notes:
-            await interaction.response.send_message(
-                "I don't have any notes on you yet — talk to me a bit!", ephemeral=True)
-            return
-        body = "\n".join(f"• {n}" for n in notes)
-        embed = discord.Embed(title="🧠 What I remember about you", description=body,
-                              color=discord.Color.purple())
-        embed.set_footer(text="Only things you told me in chat. Use /forget to wipe it.")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
-
-    @app_commands.command(name="forget", description="Make Zafven forget what she remembers about you.")
-    @app_commands.guild_only()
-    async def forget(self, interaction: discord.Interaction) -> None:
-        cleared = await chat_memory.clear(interaction.guild, interaction.user.id)
-        msg = "Done — I've wiped my notes about you. 🧹" if cleared else "I didn't have any notes on you."
-        await interaction.response.send_message(msg, ephemeral=True)
-
     @app_commands.command(name="feelings", description="See how Zafven currently feels about you.")
     @app_commands.guild_only()
     async def feelings(self, interaction: discord.Interaction) -> None:

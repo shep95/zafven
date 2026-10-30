@@ -191,16 +191,6 @@ SEVEN_SINS_COOLDOWN_SECONDS: int = _int("SEVEN_SINS_COOLDOWN_SECONDS", 21600)
 GEMINI_TTS_MODEL: str = os.getenv("GEMINI_TTS_MODEL", "gemini-2.5-flash-preview-tts").strip()
 # Prebuilt Gemini voice (Kore, Puck, Aoede, Leda, Zephyr, Charon, Fenrir, …).
 GEMINI_TTS_VOICE: str = os.getenv("GEMINI_TTS_VOICE", "Kore").strip()
-# ── Two-way voice timing (tune for snappiness) ───────────────────────────
-# Silence (ms) after you stop talking before she replies. Lower = snappier,
-# but too low cuts you off mid-sentence.
-VOICE_SILENCE_MS: int = _int("VOICE_SILENCE_MS", 700)
-# Ignore blips shorter than this (ms).
-VOICE_MIN_MS: int = _int("VOICE_MIN_MS", 450)
-# Keep voice replies short so they generate + speak fast.
-VOICE_REPLY_TOKENS: int = _int("VOICE_REPLY_TOKENS", 120)
-# Model for understanding your speech (a faster model = lower latency).
-VOICE_MODEL: str = os.getenv("VOICE_MODEL", "gemini-2.0-flash").strip()
 
 # ── YouTube + knowledge reports ──────────────────────────────────────────
 # Optional YouTube Data API v3 key for /youtube search (real video links).
@@ -216,12 +206,6 @@ RANKS_ENABLED: bool = os.getenv("RANKS_ENABLED", "true").strip().lower() in {"1"
 RANK_COOLDOWN_SECONDS: int = _int("RANK_COOLDOWN_SECONDS", 60)
 # Role ladder as "RoleName:level" pairs; level = floor(sqrt(xp/100)).
 RANK_LADDER: list[str] = _csv("RANK_LADDER", "Helper:1,Regular:3,Trusted:6,Steward:10,Elder:15")
-
-# Daily broadcast is disabled by default; the former occult transit/oracle cog is
-# no longer loaded at startup.
-DAILY_ENABLED: bool = os.getenv("DAILY_ENABLED", "false").strip().lower() in {"1", "true", "yes"}
-DAILY_CHANNEL: str = os.getenv("DAILY_CHANNEL", "daily").strip()
-DAILY_HOUR_UTC: int = _int("DAILY_HOUR_UTC", 13)
 
 
 # ── Welcome DMs + invite tracking / referral leaderboard ─────────────────

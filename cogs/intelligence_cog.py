@@ -91,6 +91,19 @@ class IntelligenceCog(commands.Cog):
     async def memory_off(self, interaction: discord.Interaction) -> None:
         await self._set_memory(interaction, False)
 
+    @memory.command(name="forget", description="Wipe everything Zafven remembers about you.")
+    @app_commands.guild_only()
+    async def memory_forget(self, interaction: discord.Interaction) -> None:
+        intel = self._intel()
+        if intel is None:
+            await interaction.response.send_message("the intelligence layer is off.", ephemeral=True)
+            return
+        gi = await intel.for_guild(interaction.guild)
+        cleared = await gi.memory.forget_user(interaction.user.id)
+        msg = ("done — i've wiped what i remembered about you. 🧹" if cleared
+               else "i didn't have anything stored about you.")
+        await interaction.response.send_message(msg, ephemeral=True)
+
     async def _set_memory(self, interaction: discord.Interaction, on: bool) -> None:
         intel = self._intel()
         if intel is None:
