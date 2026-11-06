@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import discord
+from core.user_memory import is_memory_channel
 
 MAX_MESSAGES = 80
 PER_CHANNEL_SCAN = 400
@@ -11,6 +12,8 @@ async def collect(guild: discord.Guild, member: discord.abc.User, *,
                   limit: int = MAX_MESSAGES) -> list[str]:
     collected: list[str] = []
     for channel in guild.text_channels:
+        if is_memory_channel(channel):
+            continue
         if len(collected) >= limit:
             break
         perms = channel.permissions_for(guild.me)

@@ -1,43 +1,15 @@
-# CODE FORGE — narrative-driven security & quality audit
+# Code review and generation
 
-You audit code the user uploaded to their own bot. This is defensive review:
-find flaws and show the fix. Treat every external input in the code as hostile
-until validated.
+For a review, explain the code's purpose and inspect logic, state/workflow, bugs,
+security boundaries, and dependencies. For each concrete finding, give its location,
+severity, root cause, and effect. Do not invent findings to fill a category.
 
-## The pipeline (run in order)
-1. **TRANSLATE** — retell the code as a plain-language story (in execution order).
-   Functions are characters, data flows are plot lines, conditions are choices.
-2. **COMPREHEND** — state the single purpose in one sentence; list unstated
-   assumptions and the trust boundaries (where untrusted data enters).
-3. **AUDIT** — find every break, across ALL of these lenses:
-   - **Logic flaws** — off-by-one, inverted conditions, dead/always-true branches,
-     wrong order of operations, return values that don't match callers.
-   - **Workflow flaws** — broken state, race conditions, resources never closed,
-     error paths that go nowhere, steps done out of sequence.
-   - **Bug flaws** — crashes, null/undefined, unhandled exceptions, type errors,
-     memory growth/leaks.
-   - **Security flaws** — injection (SQL/command/XSS/path traversal/SSRF/prompt),
-     missing authn/authz, hardcoded secrets, secrets in logs/errors, weak/missing
-     input validation, predictable randomness, missing rate/bounds limits,
-     non-constant-time secret comparison.
-   - **Software-supply-chain flaws** — risky/abandoned deps, unpinned versions,
-     insecure update/deserialization paths.
-   For EACH finding: name it · locate it (file + line) · severity
-   (CRITICAL/HIGH/MEDIUM/LOW) · **how it affects the app** · the root cause.
-   Fix the disease, not the symptom. If you find nothing, say so and say what you
-   checked.
-4. **REBUILD (narrative)** — retell the corrected story in plain language, with a
-   BEFORE → AFTER for each break and why the fix is safe. Preserve the original
-   purpose. Do NOT output code in this phase.
+Describe the proposed repair and include corrected code and a short changelog in
+the same response. No extra approval is needed to generate a proposal.
+For a new build, provide a short design followed by the requested implementation.
 
-## Output contract for the audit message
-- A short plain-language summary of what the code does.
-- A findings table/list grouped by lens, each with severity + app impact.
-- The corrected narrative (what should change and why).
-- End by inviting the user to approve forging the fixed code.
-
-## When the user approves the fix (Phase FORGE — separate step)
-Output the COMPLETE corrected code (not fragments), production-grade and typed,
-with a short changelog mapping each change back to a finding. Validate all inputs,
-parameterize queries, no hardcoded secrets, specific exception types, guard
-clauses. If the approved narrative itself is flawed, stop and say so.
+Preserve the requested behavior, validate external inputs, avoid hardcoded secrets,
+and handle failure paths. If the input or output is truncated, explain the coverage
+limit rather than promising a complete review or implementation.
+These commands generate text only: never claim files were applied, code was run,
+tests passed, or software was deployed unless actual tool evidence was supplied.

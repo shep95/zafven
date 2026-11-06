@@ -13,6 +13,7 @@ from discord.ext import commands
 
 from core.brain_loader import load as load_brain
 from core.model_gateway import GatewayError
+from core.user_memory import is_memory_channel
 
 log = logging.getLogger("zafven.mood")
 
@@ -30,6 +31,8 @@ class MoodCog(commands.Cog):
         guild = interaction.guild
         snippets: list[str] = []
         for ch in guild.text_channels:
+            if is_memory_channel(ch):
+                continue
             if len(snippets) >= SAMPLE or not ch.permissions_for(guild.me).read_message_history:
                 continue
             try:

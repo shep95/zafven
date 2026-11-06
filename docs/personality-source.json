@@ -1,0 +1,15 @@
+{
+  "source_archive": "aureon-v74.4 (2).zip",
+  "archive_sha256": "54b9680eecc5a1dd6dd6f9cfbfdeb407cfbd2f462ece83f30c11e3d09c5ca907",
+  "selected_entry_sha256": {
+    "adapters/system-prompt.txt": "0e7f33b8d739396b153025af0f11a8d1ba929e4c9e49677ca299945eb7c1be5e",
+    "skill/aureon-v74-4/SKILL.md": "5b96fc8a8ba49d838abdf9bca9a5ef85ffec6ed7583b3ea91a1715cf800a7963"
+  },
+  "derived_personality": "brains/zafven_v74_4.md",
+  "transformations": [
+    "Rename imported identity labels to Zafven/zafven",
+    "Remove skill front matter and provider-installation directions",
+    "Keep platform capability and evidence boundaries"
+  ],
+  "scope": "Personality instructions only; source installer and API runtime were not executed or installed. Other ZIP materials are not claimed as loaded."
+}

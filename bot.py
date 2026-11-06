@@ -2,8 +2,8 @@
 
 Gemini powers chat, TTS, summaries, and knowledge workflows through a single
 ModelGateway. Server features such as music, Bible reference replies, join/leave
-logging, inactive cleanup, and profanity filtering avoid the removed occult
-reading command surface.
+logging and manual inactive cleanup work independently of the model.
+Automatic content policing is not installed.
 """
 from __future__ import annotations
 
@@ -44,13 +44,11 @@ INITIAL_COGS = [
     "cogs.persona_cog",
     "cogs.logging_cog",
     "cogs.messagelog_cog",
+    "cogs.backup_cog",
+    "cogs.user_memory_cog",
+    "cogs.public_bot_cog",
+    "cogs.reinvite_cog",
     "cogs.moderation_cog",
-    "cogs.profanity_cog",
-    "cogs.antispam_cog",
-    "cogs.antiharass_cog",
-    "cogs.antimanip_cog",
-    "cogs.seven_sins_cog",
-    "cogs.filescan_cog",
     "cogs.report_cog",
     "cogs.invites_cog",
     "cogs.help_cog",
@@ -114,7 +112,7 @@ class Zafven(commands.Bot):
 
     async def on_ready(self) -> None:
         log.info("zafven online as %s (id=%s)", self.user, self.user.id if self.user else "?")
-        await self.change_presence(activity=discord.Game(name="/help • reading the patterns"))
+        await self.change_presence(activity=discord.Game(name="/help • /houseofasher"))
 
     async def on_app_command_error(self, interaction: discord.Interaction,
                                    error: discord.app_commands.AppCommandError) -> None:

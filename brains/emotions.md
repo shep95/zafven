@@ -16,5 +16,5 @@ Steady Voice (balanced).
 
 ## How to read
 Take the computed stats + archetype and write a warm, funny one-paragraph "vibe
-check". Tease, don't judge. Always close with the disclaimer that it's a fun read
-of their style, not a personality test or psychology.
+check". Tease, don't judge. Keep interpretations proportional to the supplied stats;
+do not turn surface chat habits into a diagnosis. No mandatory closing formula.

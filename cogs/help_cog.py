@@ -13,6 +13,12 @@ class HelpCog(commands.Cog):
     @app_commands.command(name="help", description="What can zafven do?")
     async def help(self, interaction: discord.Interaction) -> None:
         embed = discord.Embed(title="zafven - commands", color=discord.Color.dark_purple())
+        embed.add_field(name="Public bot & Houseofasher", value=(
+            "`/invitebot` / `/publicstatus` - public installation\n"
+            "`/houseofasher [private]` - Houseofasher invite; optional requested DM\n"
+            "`/houseofasher_updates <enabled>` - choose future promotional DMs\n"
+            "`/promotion_setup` / `/promote_houseofasher` - approved server posts\n"
+            "`/owner_role_access` / `/owner_role` - server-approved bot-owner role control"), inline=False)
         embed.add_field(
             name="Core",
             value=("`/ask <question>` - ask Zafven anything\n"
@@ -32,13 +38,14 @@ class HelpCog(commands.Cog):
                    "`/tldr [count]` - summarize recent messages here\n"
                    "`/askdoc <pdf> <question>` - ask a question about a PDF\n"
                    "`/audit <file>` - security + quality audit of code/.zip\n"
-                   "`/forge <spec> [language]` - plan a feature, then write code on approval"),
+                   "`/forge <spec> [language]` - generate a design and code"),
             inline=False)
         embed.add_field(
             name="Just talk to her",
             value=("Mention Zafven or reply to her to ask questions, look things up, joke, and banter.\n"
                    "When she uses messages from other readable channels, she quotes the channel and sender.\n"
                    "She remembers what you tell her. `/memory` shows it, `/forget` wipes it.\n"
+                   "`/adapt [style] [banter:off|light|troll]` tunes your replies; `/remember <area> <text>` saves personal notes.\n"
                    "`/feelings` shows her current mood toward you. `/culture view` shows server vibe.\n"
                    "`/teach <topic> <fact>`, `/taught`, and `/unlearn` manage learned server facts.\n"
                    "Admins can tune style with `/persona set` and add custom knowledge with `/brain add`."),
@@ -54,7 +61,7 @@ class HelpCog(commands.Cog):
                    "`/playnext <link>` - jump the line and play a song next\n"
                    "`/restartmusic` - restart the current song\n"
                    "`/musicfreq <0|4-8>` - optional low-frequency tremolo for future songs\n"
-                   "`/defaultmusic add|list|remove|clear|start` - server creator default playlist\n"
+                   "`/defaultmusic add|list|remove|clear|start` - shared server default playlist\n"
                    "`/playlist add|list|remove|clear|start|share|accept|reject` - personal playlists\n"
                    "`/loop track|queue|off` / `/queue` / `/shuffle` / `/remove <n>` / `/clear`\n"
                    "`/nowplaying` / `/skip` / `/pause` / `/resume` / `/volume <0-200>` / `/stop`\n"
@@ -64,14 +71,15 @@ class HelpCog(commands.Cog):
             name="Community & moderation",
             value=("`/rank [member]` / `/leaderboard` - XP & levels\n"
                    "`/invite` - personal invite link · `/invites [member]` · `/invitelb` - "
-                   "referral leaderboard (monthly Nitro for the top inviter)\n"
+                   "referral leaderboard\n"
                    "`/capsule <message> <deliver_on> [public]` - send a message to the future\n"
                    "`/mood` - aggregate read of the server's current vibe\n"
                    "`/cipher` (mod) / `/solve <answer>` - cipher puzzle events\n"
                    "`/kick_inactive [days] [dry_run] [message]` - preview/remove inactive members\n"
                    "`/report <message_link> [reason]` - escalate a message to mods\n"
-                   "Welcome cards, deleted-message logs, profanity/slur moderation, anti-spam, "
-                   "anti-scam, and optional private seven-sins nudges are available."),
+                   "`/backup_history [limit]` / `/backup_status` - private message archive (admins)\n"
+                   "`/discover_members` / `/reinvite` / `/reinvite_status` / `/reinvite_cancel` - batch invitations (admins)\n"
+                   "Welcome cards, deleted-message logs, and manual moderator reports are available."),
             inline=False)
         embed.set_footer(text="zafven")
         await interaction.response.send_message(embed=embed, ephemeral=True)

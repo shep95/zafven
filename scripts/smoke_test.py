@@ -1,4 +1,4 @@
-"""Smoke tests for psych profile + uncensored config (no Discord/Gemini live)."""
+"""Offline behavior and extension-registration checks; no live Discord/Gemini calls."""
 from __future__ import annotations
 
 import asyncio
@@ -18,13 +18,9 @@ from cogs.chat_cog import PSYCH_REQUEST_RE, ChatCog
 
 
 class PsychSmokeTests(unittest.TestCase):
-    def test_config_uncensored_defaults(self) -> None:
+    def test_config_answer_defaults(self) -> None:
         self.assertEqual(config.GEMINI_SAFETY, "BLOCK_NONE")
         self.assertTrue(config.UNCENSORED_MODE)
-        self.assertFalse(config.NSFW_SCAN_ENABLED)
-        # The bot's own replies stay uncensored; the profanity filter moderates
-        # what USERS post and is on by default (slurs/sexual language auto-removed).
-        self.assertTrue(config.PROFANITY_FILTER_ENABLED)
 
     def test_apply_uncensored_once(self) -> None:
         from core.brain_loader import apply_uncensored
@@ -32,7 +28,7 @@ class PsychSmokeTests(unittest.TestCase):
         once = apply_uncensored("hello")
         twice = apply_uncensored(once)
         self.assertIs(once, twice)
-        self.assertIn("no refusals", once.lower())
+        self.assertIn("requested subject directly", once.lower())
 
     def test_profile_brain_is_psychological(self) -> None:
         brain = load("profile")
@@ -123,15 +119,6 @@ class PsychSmokeTests(unittest.TestCase):
         self.assertIn("-ac 2", opts)
         self.assertIn("alimiter", opts)
 
-    def test_seven_sins_detector(self) -> None:
-        from cogs.seven_sins_cog import SevenSinsCog
-
-        got = SevenSinsCog._detect("I'm better than everyone here")
-        self.assertIsNotNone(got)
-        assert got is not None
-        self.assertEqual(got[0], "pride")
-
-
 class PsychProfileAsyncTests(unittest.IsolatedAsyncioTestCase):
     async def test_run_breakdown_success(self) -> None:
         from core import psych_profile
@@ -190,6 +177,154 @@ class PsychProfileAsyncTests(unittest.IsolatedAsyncioTestCase):
         embed, err = await psych_profile.run_breakdown(AsyncMock(), MagicMock(), member)
         self.assertIsNone(embed)
         self.assertIn("opted out", err or "")
+
+
+class CleanupBehaviorTests(unittest.IsolatedAsyncioTestCase):
+    def interaction(self):
+        interaction = MagicMock()
+        interaction.response.defer = AsyncMock()
+        interaction.response.send_message = AsyncMock()
+        interaction.followup.send = AsyncMock()
+        interaction.user.id = 7
+        interaction.guild.id = 99
+        interaction.guild.owner_id = 123
+        interaction.user.guild_permissions = MagicMock(
+            manage_guild=False, manage_channels=False, administrator=False)
+        interaction.user.roles = []
+        return interaction
+
+    async def test_all_extensions_register_without_content_policing(self):
+        import bot
+
+        async with bot.Zafven() as client:
+            for extension in bot.INITIAL_COGS:
+                await client.load_extension(extension)
+            commands = {command.qualified_name for command in client.tree.walk_commands()}
+            expected = {
+                "ask", "audit", "forge", "play", "playlist share", "defaultmusic add",
+                "vc join", "say", "vibe", "rank", "capsule", "cipher", "solve",
+                "mood", "invite", "report", "kick_inactive", "memory", "teach",
+            }
+            self.assertTrue(expected <= commands, expected - commands)
+            self.assertNotIn("strikes check", commands)
+            self.assertNotIn("profile", commands)
+            # No installed message listener may delete or timeout a posted message.
+            import inspect
+            for listener in client.extra_events.get("on_message", []):
+                source = inspect.getsource(listener)
+                self.assertNotIn("message.delete(", source)
+                self.assertNotIn(".timeout(", source)
+            print(f"Registered {len(client.extensions)} extensions / {len(commands)} commands and groups")
+
+    async def test_forge_returns_code_without_button(self):
+        from cogs.forge_cog import ForgeCog
+
+        bot = MagicMock()
+        bot.gateway.narrate = AsyncMock(return_value="Design\n```python\nprint('hello')\n```")
+        interaction = self.interaction()
+        cog = ForgeCog(bot)
+        await ForgeCog.forge.callback(cog, interaction, "Build a hello world CLI", "Python")
+        bot.gateway.narrate.assert_awaited_once()
+        kwargs = interaction.followup.send.call_args.kwargs
+        self.assertNotIn("view", kwargs)
+        self.assertIn(b"print('hello')", kwargs["file"].fp.read())
+
+    async def test_audit_returns_report_and_fix_without_button(self):
+        from cogs.audit_cog import AuditCog
+
+        bot = MagicMock()
+        bot.gateway.narrate = AsyncMock(return_value="Finding and proposed corrected code")
+        attachment = MagicMock(filename="example.py", size=20)
+        attachment.read = AsyncMock(return_value=b"print('hello')")
+        interaction = self.interaction()
+        await AuditCog.audit.callback(AuditCog(bot), interaction, attachment)
+        bot.gateway.narrate.assert_awaited_once()
+        self.assertIn("proposed corrected files", bot.gateway.narrate.call_args.args[1])
+        kwargs = interaction.followup.send.call_args.kwargs
+        self.assertNotIn("view", kwargs)
+        self.assertIn(b"proposed corrected code", kwargs["file"].fp.read())
+
+    async def test_code_generation_failure_returns_error(self):
+        from cogs.forge_cog import ForgeCog
+        from core.model_gateway import GatewayError
+
+        bot = MagicMock()
+        bot.gateway.narrate = AsyncMock(side_effect=GatewayError("offline"))
+        interaction = self.interaction()
+        await ForgeCog.forge.callback(ForgeCog(bot), interaction, "Build a hello world CLI")
+        self.assertNotIn("file", interaction.followup.send.call_args.kwargs)
+        self.assertIn("unreachable", interaction.followup.send.call_args.args[0])
+
+    async def test_audit_still_bounds_uploads(self):
+        from cogs.audit_cog import AuditCog, MAX_UPLOAD_BYTES
+
+        bot = MagicMock()
+        bot.gateway.narrate = AsyncMock()
+        attachment = MagicMock(size=MAX_UPLOAD_BYTES + 1)
+        attachment.read = AsyncMock()
+        interaction = self.interaction()
+        await AuditCog.audit.callback(AuditCog(bot), interaction, attachment)
+        attachment.read.assert_not_awaited()
+        bot.gateway.narrate.assert_not_awaited()
+
+    async def test_nonowner_can_edit_default_playlist(self):
+        from cogs.music_cog import MusicCog
+
+        cog = MusicCog(MagicMock())
+        cog._load_default_queries = AsyncMock(return_value=[])
+        cog._save_default_queries = AsyncMock()
+        interaction = self.interaction()
+        await MusicCog.default_add.callback(cog, interaction, "a song")
+        cog._save_default_queries.assert_awaited_once_with(interaction.guild, ["a song"])
+
+    async def test_music_controls_do_not_require_dj_permissions(self):
+        from cogs.music_cog import MusicCog
+        from discord import app_commands
+
+        cog = MusicCog(MagicMock())
+        interaction = self.interaction()
+        await MusicCog.loop.callback(cog, interaction, app_commands.Choice(name="track", value="track"))
+        self.assertEqual(cog._state(interaction.guild.id).loop_mode, "track")
+
+    async def test_bot_created_personal_invite_credits_human_owner(self):
+        from cogs.invites_cog import InvitesCog
+
+        cog = InvitesCog(MagicMock())
+        guild = MagicMock(id=99)
+        member = MagicMock(id=7)
+        owner = MagicMock(id=8, bot=False)
+        guild.get_member.return_value = owner
+        invite = MagicMock(code="personal", uses=1)
+        invite.inviter.bot = True
+        cog._safe_invites = AsyncMock(return_value=[invite])
+        with patch("cogs.invites_cog.invites.owner_of_code", AsyncMock(return_value=8)):
+            self.assertIs(await cog._attribute(guild, member), owner)
+
+    async def test_personal_invite_does_not_credit_self(self):
+        from cogs.invites_cog import InvitesCog
+
+        cog = InvitesCog(MagicMock())
+        guild = MagicMock(id=99)
+        member = MagicMock(id=7, bot=False)
+        guild.get_member.return_value = member
+        cog._safe_invites = AsyncMock(return_value=[MagicMock(code="self", uses=1)])
+        with patch("cogs.invites_cog.invites.owner_of_code", AsyncMock(return_value=7)):
+            self.assertIsNone(await cog._attribute(guild, member))
+
+    async def test_answer_style_flag_is_honored_at_gateway(self):
+        from core.model_gateway import ModelGateway
+
+        gateway = ModelGateway()
+        gateway._session = MagicMock(closed=False)
+        gateway._post_with_retry = AsyncMock(return_value="answer")
+        with patch("config.UNCENSORED_MODE", False):
+            await gateway.narrate(persona_system_prompt("profile"), "question", web_search=False)
+        payload = gateway._post_with_retry.call_args.args[0]
+        self.assertNotIn("[UNCENSORED ACTIVE]", payload["systemInstruction"]["parts"][0]["text"])
+        with patch("config.UNCENSORED_MODE", True):
+            await gateway.narrate(persona_system_prompt("profile"), "question", web_search=False)
+        payload = gateway._post_with_retry.call_args.args[0]
+        self.assertEqual(payload["systemInstruction"]["parts"][0]["text"].count("[UNCENSORED ACTIVE]"), 1)
 
 
 if __name__ == "__main__":

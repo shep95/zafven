@@ -8,8 +8,9 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from core.brain_loader import load as load_brain, apply_uncensored
+from core.brain_loader import load as load_brain
 from core.model_gateway import GatewayError
+from core.user_memory import memory, prompt_context
 
 log = logging.getLogger("zafven.tools")
 
@@ -17,7 +18,7 @@ MAX_PDF_BYTES = 15 * 1024 * 1024
 
 
 def _persona(extra: str) -> str:
-    return apply_uncensored(f"{load_brain('persona')}\n\n--- TASK MODE ---\n{extra}")
+    return f"{load_brain('persona')}\n\n--- TASK MODE ---\n{extra}"
 
 
 class ToolsCog(commands.Cog):
@@ -26,7 +27,7 @@ class ToolsCog(commands.Cog):
 
     @app_commands.command(
         name="ask",
-        description="Ask Zafven anything — direct, uncensored, truthful answer.",
+        description="Ask Zafven a question and get a direct answer.",
     )
     @app_commands.describe(question="Your question — any topic, no filters.")
     async def ask(self, interaction: discord.Interaction, question: str) -> None:
@@ -34,11 +35,17 @@ class ToolsCog(commands.Cog):
             await interaction.response.send_message("❌ Ask a real question.", ephemeral=True)
             return
         await interaction.response.defer(thinking=True)
-        system = apply_uncensored(
+        system = (
             load_brain("companion")
             + "\n\nSlash-command Q&A: answer the question fully and truthfully in your voice. "
-            "No refusals, no moralizing, no disclaimers."
+            "Distinguish facts from uncertainty and follow the requested format."
         )
+        if interaction.guild is not None:
+            try:
+                state = await memory.load(interaction.guild, interaction.user.id)
+                system += "\n\n" + prompt_context(state, interaction.channel_id)
+            except Exception:
+                log.exception("Could not retrieve personal Q&A memory")
         use_search = bool(
             re.search(
                 r"\b(today|latest|current|now|news|price|who is|what happened|202[4-9])\b",
@@ -57,6 +64,11 @@ class ToolsCog(commands.Cog):
             log.warning("ask failed: %s", exc)
             await interaction.followup.send("🔌 Couldn't reach the engine right now. Try again shortly.")
             return
+        if interaction.guild is not None:
+            try:
+                await memory.exchange(interaction.guild.id, interaction.user.id, interaction.channel_id, question, out)
+            except Exception:
+                log.exception("Could not save personal Q&A memory")
         embed = discord.Embed(
             title="💬 Ask Zafven",
             description=out[:4000],

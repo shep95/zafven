@@ -13,6 +13,7 @@ import discord
 
 from core import store
 from core.model_gateway import GatewayError
+from core.user_memory import is_memory_channel
 
 log = logging.getLogger("zafven.culture")
 
@@ -36,6 +37,8 @@ async def get_digest(guild: discord.Guild) -> str:
 async def build_digest(bot, guild: discord.Guild) -> bool:
     snippets: list[str] = []
     for ch in guild.text_channels:
+        if is_memory_channel(ch):
+            continue
         if len(snippets) >= SAMPLE or not ch.permissions_for(guild.me).read_message_history:
             continue
         try:

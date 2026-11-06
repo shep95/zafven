@@ -76,7 +76,6 @@ class Track:
     uploader: str
     thumbnail: str | None
     requester: str         # display name of whoever queued it
-    requester_id: int = 0  # their Discord user id (for self-skip / DJ checks)
 
 
 # Player clients to try, in order. `android` first — it's what reliably got past
@@ -185,7 +184,7 @@ def _extract(query: str) -> tuple[dict | None, str | None]:
     return None, last_err
 
 
-async def resolve(query: str, requester: str, requester_id: int = 0) -> tuple["Track | None", str | None]:
+async def resolve(query: str, requester: str) -> tuple["Track | None", str | None]:
     """Resolve a URL/search to a Track. Returns (track, None) or (None, reason)."""
     try:
         info, err = await asyncio.to_thread(_extract, query)
@@ -203,7 +202,6 @@ async def resolve(query: str, requester: str, requester_id: int = 0) -> tuple["T
         uploader=info.get("uploader") or info.get("channel") or "",
         thumbnail=info.get("thumbnail"),
         requester=requester,
-        requester_id=requester_id,
     ), None
 
 

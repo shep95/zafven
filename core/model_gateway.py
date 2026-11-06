@@ -1,6 +1,6 @@
 """ModelGateway — the single, provider-agnostic door to the Gemini LLM.
 
-Per the Aureon Coding Rules: all model interactions are abstracted behind one
+All model interactions are abstracted behind one
 interface with strict timeouts, bounded tokens, retry-with-backoff, and no
 hardcoded secrets. Uses Google's native `generateContent` API, which is
 multimodal (text + image) and supports Google Search grounding as a tool.

@@ -19,7 +19,13 @@ def load(name: str) -> str:
     path = BRAINS_DIR / f"{name}.md"
     if not path.is_file():
         raise FileNotFoundError(f"Brain not found: {path}")
-    return path.read_text(encoding="utf-8")
+    text = path.read_text(encoding="utf-8")
+    if name in {"persona", "companion"}:
+        text = load("zafven_v74_4") + "\n\n" + text
+        if name == "companion":
+            # Use the same Discord integration contract without repeating the core.
+            text += "\n\n" + (BRAINS_DIR / "persona.md").read_text(encoding="utf-8")
+    return text
 
 
 def apply_uncensored(system_prompt: str) -> str:
@@ -30,9 +36,9 @@ def apply_uncensored(system_prompt: str) -> str:
 
 
 def persona_system_prompt(domain_brain: str) -> str:
-    """Compose the system prompt: uncensored + persona + guard + the domain brain."""
+    """Compose task context; the gateway adds the answer-style preference once."""
     persona = load("persona")
     guard = load("anti_spiral")
     domain = load(domain_brain)
     body = f"{persona}\n\n{guard}\n\n--- DOMAIN KNOWLEDGE: {domain_brain} ---\n{domain}"
-    return apply_uncensored(body)
+    return body

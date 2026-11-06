@@ -6,8 +6,8 @@ through FFmpeg, and queues anything you add while a track is playing. `/skip`,
 round it out.
 
 Runtime needs: FFmpeg + PyNaCl (already required for voice) and `yt-dlp`.
-Note: this shares the one voice client with `/vc` TTS — if speak-mode is on it can
-talk over the music, so use `/vc speak off` (or a music-only bot) for pure playback.
+This shares one voice client with `/vc` TTS. Automatic chat speech is suppressed
+during music; explicit `/say` can interrupt playback.
 """
 from __future__ import annotations
 
@@ -60,7 +60,7 @@ _REJOIN_WINDOW = 120.0  # 3 rejoins in 2 min = flapping → disable 24/7 to stop
 class MusicCog(commands.Cog):
     defaultmusic = app_commands.Group(
         name="defaultmusic",
-        description="Server-owner default music playlist controls.",
+        description="Server default music playlist controls.",
         guild_only=True,
     )
     playlist = app_commands.Group(
@@ -90,30 +90,6 @@ class MusicCog(commands.Cog):
         if st is not None and st.tremolo_hz is not None:
             return st.tremolo_hz
         return int(getattr(config, "MUSIC_TREMOLO_HZ", 0) or 0)
-
-    def _can_control(self, interaction: discord.Interaction, *, allow_requester: bool = False) -> bool:
-        """DJ gate: with MUSIC_DJ_ROLE set, only DJs/mods (or, optionally, the
-        requester of the current song) may run control commands. Blank = open."""
-        dj = config.MUSIC_DJ_ROLE.strip()
-        if not dj:
-            return True
-        member = interaction.user
-        if isinstance(member, discord.Member):
-            perms = member.guild_permissions
-            if perms.manage_guild or perms.manage_channels:
-                return True
-            if any(r.name.lower() == dj.lower() for r in member.roles):
-                return True
-        if allow_requester:
-            st = self._states.get(interaction.guild.id)
-            if st and st.current and st.current.requester_id == member.id:
-                return True
-        return False
-
-    async def _deny(self, interaction: discord.Interaction) -> None:
-        await interaction.response.send_message(
-            f"🎧 that's DJ-only — you need the **{config.MUSIC_DJ_ROLE}** role (or mod perms).",
-            ephemeral=True)
 
     async def _save_tremolo(self, guild: discord.Guild, hz: int) -> None:
         try:
@@ -272,8 +248,7 @@ class MusicCog(commands.Cog):
         # /playlist or /defaultmusic start) so your song doesn't get stuck repeating.
         state.loop_mode = "off"
 
-        track, reason = await music.resolve(query.strip(), requester=interaction.user.display_name,
-                                            requester_id=interaction.user.id)
+        track, reason = await music.resolve(query.strip(), requester=interaction.user.display_name)
         if track is None:
             await interaction.followup.send(f"❌ {music.friendly_error(reason)}")
             return
@@ -318,9 +293,6 @@ class MusicCog(commands.Cog):
         data[str(user_id)] = {"queries": queries}
         await s.set(_NS_USER_PLAYLISTS, data)
 
-    def _is_server_owner(self, interaction: discord.Interaction) -> bool:
-        return bool(interaction.guild and interaction.user.id == interaction.guild.owner_id)
-
     async def _queue_queries(self, interaction: discord.Interaction, queries: list[str], label: str) -> None:
         if not queries:
             await interaction.followup.send(f"{label} is empty.", ephemeral=True)
@@ -337,7 +309,6 @@ class MusicCog(commands.Cog):
             track, reason = await music.resolve(
                 query,
                 requester=interaction.user.display_name,
-                requester_id=interaction.user.id,
             )
             if track is None:
                 log.info("playlist item skipped (%s): %s", query, reason)
@@ -367,31 +338,22 @@ class MusicCog(commands.Cog):
     async def playnext(self, interaction: discord.Interaction, query: str) -> None:
         await self._enqueue(interaction, query, front=True)
 
-    @defaultmusic.command(name="add", description="Server owner: add a query to the server default playlist.")
+    @defaultmusic.command(name="add", description="add a query to the server default playlist.")
     @app_commands.describe(query="A YouTube link or search query.")
     async def default_add(self, interaction: discord.Interaction, query: str) -> None:
-        if not self._is_server_owner(interaction):
-            await interaction.response.send_message("Only the server creator can set default music.", ephemeral=True)
-            return
         queries = await self._load_default_queries(interaction.guild)
         queries.append(query.strip())
         await self._save_default_queries(interaction.guild, queries)
         await interaction.response.send_message(f"Default music now has **{len(queries)}** queries.", ephemeral=True)
 
-    @defaultmusic.command(name="list", description="Server owner: list the server default playlist queries.")
+    @defaultmusic.command(name="list", description="list the server default playlist queries.")
     async def default_list(self, interaction: discord.Interaction) -> None:
-        if not self._is_server_owner(interaction):
-            await interaction.response.send_message("Only the server creator can view default music.", ephemeral=True)
-            return
         queries = await self._load_default_queries(interaction.guild)
         body = "\n".join(f"{i}. {q}" for i, q in enumerate(queries, 1)) or "No default music set."
         await interaction.response.send_message(body[:1900], ephemeral=True)
 
-    @defaultmusic.command(name="remove", description="Server owner: remove a default playlist query by number.")
+    @defaultmusic.command(name="remove", description="remove a default playlist query by number.")
     async def default_remove(self, interaction: discord.Interaction, position: int) -> None:
-        if not self._is_server_owner(interaction):
-            await interaction.response.send_message("Only the server creator can set default music.", ephemeral=True)
-            return
         queries = await self._load_default_queries(interaction.guild)
         if position < 1 or position > len(queries):
             await interaction.response.send_message("No default query at that position.", ephemeral=True)
@@ -400,11 +362,8 @@ class MusicCog(commands.Cog):
         await self._save_default_queries(interaction.guild, queries)
         await interaction.response.send_message(f"Removed `{gone}`.", ephemeral=True)
 
-    @defaultmusic.command(name="clear", description="Server owner: clear the server default playlist.")
+    @defaultmusic.command(name="clear", description="clear the server default playlist.")
     async def default_clear(self, interaction: discord.Interaction) -> None:
-        if not self._is_server_owner(interaction):
-            await interaction.response.send_message("Only the server creator can set default music.", ephemeral=True)
-            return
         await self._save_default_queries(interaction.guild, [])
         await interaction.response.send_message("Default music cleared.", ephemeral=True)
 
@@ -495,9 +454,6 @@ class MusicCog(commands.Cog):
     ])
     @app_commands.guild_only()
     async def loop(self, interaction: discord.Interaction, mode: app_commands.Choice[str]) -> None:
-        if not self._can_control(interaction):
-            await self._deny(interaction)
-            return
         self._state(interaction.guild.id).loop_mode = mode.value
         label = {"off": "off", "track": "🔂 repeating this song", "queue": "🔁 repeating the whole queue"}[mode.value]
         await interaction.response.send_message(f"loop: **{label}**.")
@@ -505,9 +461,6 @@ class MusicCog(commands.Cog):
     @app_commands.command(name="shuffle", description="Shuffle the songs waiting in the queue.")
     @app_commands.guild_only()
     async def shuffle(self, interaction: discord.Interaction) -> None:
-        if not self._can_control(interaction):
-            await self._deny(interaction)
-            return
         import random
         state = self._state(interaction.guild.id)
         if len(state.queue) < 2:
@@ -522,9 +475,6 @@ class MusicCog(commands.Cog):
     @app_commands.describe(position="The number shown in /queue.")
     @app_commands.guild_only()
     async def remove(self, interaction: discord.Interaction, position: int) -> None:
-        if not self._can_control(interaction):
-            await self._deny(interaction)
-            return
         state = self._state(interaction.guild.id)
         if position < 1 or position > len(state.queue):
             await interaction.response.send_message("no song at that position — check `/queue`.", ephemeral=True)
@@ -537,9 +487,6 @@ class MusicCog(commands.Cog):
     @app_commands.command(name="clear", description="Clear the queue (keeps the current song playing).")
     @app_commands.guild_only()
     async def clear(self, interaction: discord.Interaction) -> None:
-        if not self._can_control(interaction):
-            await self._deny(interaction)
-            return
         state = self._state(interaction.guild.id)
         n = len(state.queue)
         state.queue.clear()
@@ -548,9 +495,6 @@ class MusicCog(commands.Cog):
     @app_commands.command(name="skip", description="Skip the current song.")
     @app_commands.guild_only()
     async def skip(self, interaction: discord.Interaction) -> None:
-        if not self._can_control(interaction, allow_requester=True):
-            await self._deny(interaction)
-            return
         vc = interaction.guild.voice_client
         if vc is None or not (vc.is_playing() or vc.is_paused()):
             await interaction.response.send_message("nothing is playing.", ephemeral=True)
@@ -562,9 +506,6 @@ class MusicCog(commands.Cog):
     @app_commands.command(name="restartmusic", description="Restart the current song from the beginning.")
     @app_commands.guild_only()
     async def restartmusic(self, interaction: discord.Interaction) -> None:
-        if not self._can_control(interaction, allow_requester=True):
-            await self._deny(interaction)
-            return
         state = self._state(interaction.guild.id)
         vc = interaction.guild.voice_client
         if vc is None or state.current is None or not (vc.is_playing() or vc.is_paused()):
@@ -579,9 +520,6 @@ class MusicCog(commands.Cog):
     @app_commands.describe(hz="0 disables it; 4-8 enables a low-frequency tremolo.")
     @app_commands.guild_only()
     async def musicfreq(self, interaction: discord.Interaction, hz: int) -> None:
-        if not self._can_control(interaction):
-            await self._deny(interaction)
-            return
         if hz != 0 and not 4 <= hz <= 8:
             await interaction.response.send_message("use **0** to turn it off, or a value from **4** to **8** Hz.", ephemeral=True)
             return
@@ -602,9 +540,6 @@ class MusicCog(commands.Cog):
     @app_commands.command(name="pause", description="Pause playback.")
     @app_commands.guild_only()
     async def pause(self, interaction: discord.Interaction) -> None:
-        if not self._can_control(interaction):
-            await self._deny(interaction)
-            return
         vc = interaction.guild.voice_client
         if vc is None or not vc.is_playing():
             await interaction.response.send_message("nothing is playing.", ephemeral=True)
@@ -615,9 +550,6 @@ class MusicCog(commands.Cog):
     @app_commands.command(name="resume", description="Resume a paused song.")
     @app_commands.guild_only()
     async def resume(self, interaction: discord.Interaction) -> None:
-        if not self._can_control(interaction):
-            await self._deny(interaction)
-            return
         vc = interaction.guild.voice_client
         if vc is None or not vc.is_paused():
             await interaction.response.send_message("nothing is paused.", ephemeral=True)
@@ -629,9 +561,6 @@ class MusicCog(commands.Cog):
     @app_commands.describe(percent="Volume percent, 0-200. Default 100.")
     @app_commands.guild_only()
     async def volume(self, interaction: discord.Interaction, percent: int) -> None:
-        if not self._can_control(interaction):
-            await self._deny(interaction)
-            return
         percent = max(0, min(percent, 200))
         state = self._state(interaction.guild.id)
         state.volume = percent / 100
@@ -673,9 +602,6 @@ class MusicCog(commands.Cog):
     @app_commands.command(name="stop", description="Stop the music, clear the queue, and leave the channel.")
     @app_commands.guild_only()
     async def stop(self, interaction: discord.Interaction) -> None:
-        if not self._can_control(interaction):
-            await self._deny(interaction)
-            return
         await interaction.response.defer()
         state = self._state(interaction.guild.id)
         state.queue.clear()
@@ -701,9 +627,6 @@ class MusicCog(commands.Cog):
     async def stay247(self, interaction: discord.Interaction, on: bool) -> None:
         if not config.MUSIC_247_ALLOWED:
             await interaction.response.send_message("24/7 mode is disabled on this server.", ephemeral=True)
-            return
-        if not self._can_control(interaction):
-            await self._deny(interaction)
             return
         # Connecting + the store write can take >3s — defer so we never miss the ack.
         await interaction.response.defer(thinking=True)

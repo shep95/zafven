@@ -11,6 +11,8 @@ from discord.ext import commands
 
 import config
 from core import activity
+from core.community_db import database
+from core.welcome import render_invitation
 
 log = logging.getLogger("zafven.moderation")
 
@@ -145,12 +147,14 @@ class ModerationCog(commands.Cog):
                 kick_failed.append(f"{member} (role too high)")
                 continue
             invite = await _make_reinvite(guild)
-            dm_text = custom_message or (
-                f"Hey! Sorry, we had to remove you from **{guild.name}** because you'd been inactive "
-                f"for over {days} days and we're tidying up the member list. No hard feelings — "
-                f"you're welcome back any time. 💚")
-            if invite:
-                dm_text += f"\n\nRejoin here whenever you like: {invite}"
+            # Record before kicking so a later reinvite can find this user even if
+            # the member-remove event is missed during a disconnect.
+            await database.remember(guild.id, member.id, str(member), present=True, source="inactive-cleanup")
+            if config.PUBLIC_BOT_MODE and custom_message is None:
+                dm_text = f"You were removed from {guild.name} during inactive-member cleanup. "
+                dm_text += "You can rejoin here: " + (invite or "(invite link unavailable)")
+            else:
+                dm_text = render_invitation(invite or "(invite link unavailable)", custom_message)
             try:
                 await member.send(dm_text)
                 dm_ok += 1

@@ -12,7 +12,6 @@ works, but attribution can't be computed.
 """
 from __future__ import annotations
 
-import asyncio
 import logging
 
 import discord
@@ -21,6 +20,7 @@ from discord.ext import commands
 
 import config
 from core import invites
+from core.welcome import render_invitation
 
 log = logging.getLogger("zafven.invites")
 
@@ -102,10 +102,7 @@ class InvitesCog(commands.Cog):
             return []
 
     def _welcome_text(self, member: discord.abc.User, link: str | None) -> str:
-        base = config.WELCOME_DM_MESSAGE or _DEFAULT_WELCOME
-        if link:
-            base += f"\n\nyour personal invite link: {link}"
-        return base
+        return render_invitation(link or "(invite link unavailable)")
 
     # ── member join: welcome DM + attribution ────────────────────────────
     @commands.Cog.listener()
@@ -120,7 +117,8 @@ class InvitesCog(commands.Cog):
         inviter = await self._attribute(guild, member)
 
         # 2) welcome DM with their own shareable link
-        if config.WELCOME_DM_ENABLED:
+        # Public installations do not initiate promotional DMs to joining users.
+        if config.WELCOME_DM_ENABLED and not config.PUBLIC_BOT_MODE:
             try:
                 link = await self._personal_invite(guild, member)
                 await member.send(self._welcome_text(member, link))
@@ -145,6 +143,13 @@ class InvitesCog(commands.Cog):
             if (inv.uses or 0) > before.get(inv.code, 0) and used is None:
                 used = inv
         self._cache[guild.id] = after
+        if used:
+            owner_id = await invites.owner_of_code(guild, used.code)
+            if owner_id is not None:
+                owner = guild.get_member(owner_id)
+                if owner and not owner.bot and owner.id != member.id:
+                    return owner
+                return None
         if used and used.inviter and not used.inviter.bot and used.inviter.id != member.id:
             return used.inviter
         return None
@@ -189,7 +194,7 @@ class InvitesCog(commands.Cog):
         await interaction.response.send_message(
             f"📨 {member.mention} has invited **{count}** member(s).", ephemeral=True)
 
-    @app_commands.command(name="invitelb", description="Top inviters — the monthly Nitro leaderboard.")
+    @app_commands.command(name="invitelb", description="Top inviters by tracked referrals.")
     @app_commands.guild_only()
     async def invitelb(self, interaction: discord.Interaction) -> None:
         top = await invites.leaderboard(interaction.guild, limit=10)
@@ -207,35 +212,19 @@ class InvitesCog(commands.Cog):
             title="🏆 invite leaderboard",
             description="\n".join(lines),
             color=discord.Color.gold())
-        embed.set_footer(text="most invites this month wins nitro from asher himself")
+        embed.set_footer(text="Tracked referral totals for this server")
         await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="announcewelcome",
-                          description="DM the welcome message to every current member (admins only).")
+                          description="Queue the invitation to current and known former members (admins only).")
     @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.guild_only()
     async def announcewelcome(self, interaction: discord.Interaction) -> None:
-        await interaction.response.defer(ephemeral=True)
-        guild = interaction.guild
-        members = [m for m in guild.members if not m.bot]
-        sent = failed = 0
-        for m in members:
-            try:
-                link = await self._personal_invite(guild, m)
-                await m.send(self._welcome_text(m, link))
-                sent += 1
-            except discord.HTTPException:
-                failed += 1
-            await asyncio.sleep(1.0)  # be gentle — Discord rate-limits DMs hard
-        await interaction.followup.send(
-            f"📣 welcome DM sent to **{sent}** members ({failed} had DMs closed).", ephemeral=True)
-
-
-_DEFAULT_WELCOME = (
-    "welcome to the **#houseofasher** community and digital empire — we're so glad you're here. 🖤\n\n"
-    "if you'd like to help us grow, share your personal invite link with people. "
-    "each month, whoever's invite link brings in the most new members wins **nitro from asher himself**."
-)
+        reinvites = self.bot.get_cog("ReinviteCog")
+        if reinvites is None:
+            await interaction.response.send_message("Reinvite queue is unavailable.", ephemeral=True)
+            return
+        await reinvites.reinvite.callback(reinvites, interaction, audience="all", dry_run=False)
 
 
 async def setup(bot: commands.Bot) -> None:
