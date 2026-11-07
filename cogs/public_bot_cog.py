@@ -7,6 +7,7 @@ from discord.ext import commands
 
 import config
 from core.public_bot import settings, installation_url, personalized_invitation
+from core.invitation_delivery import dm_failure, send_invitation
 
 
 class PublicBotCog(commands.Cog):
@@ -62,11 +63,13 @@ class PublicBotCog(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         if private:
             try:
-                await interaction.user.send(personalized_invitation(interaction.user),
-                                            allowed_mentions=discord.AllowedMentions.none())
-            except discord.HTTPException:
-                await interaction.followup.send("I couldn't DM you. Here's the invite: " + config.HOUSEOFASHER_INVITE_URL,
-                                                ephemeral=True)
+                await send_invitation(interaction.user, personalized_invitation(interaction.user))
+            except discord.HTTPException as error:
+                view = discord.ui.View()
+                view.add_item(discord.ui.Button(label="Join Houseofasher", url=config.HOUSEOFASHER_INVITE_URL))
+                await interaction.followup.send(dm_failure(error) + "\n\nNo DM delivery was confirmed. "
+                    "You can still join here: " + config.HOUSEOFASHER_INVITE_URL,
+                    view=view, ephemeral=True)
                 return
             await interaction.followup.send("Your personalized invite was sent. This does not subscribe you to future DMs.", ephemeral=True)
         else:

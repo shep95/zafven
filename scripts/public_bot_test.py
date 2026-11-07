@@ -108,6 +108,167 @@ class PublicBotTests(unittest.IsolatedAsyncioTestCase):
         interaction.user.send.assert_awaited_once()
         self.assertIn(config.HOUSEOFASHER_INVITE_URL, interaction.followup.send.call_args.args[0])
 
+    async def test_refused_dm_reports_discord_code_and_join_button(self):
+        interaction = self.interaction()
+        interaction.user.send.side_effect = discord.Forbidden(
+            MagicMock(status=403, reason="Forbidden"), {"code": 50007, "message": "Cannot send messages to this user"})
+        await PublicBotCog.houseofasher.callback(self.cog, interaction, private=True)
+        interaction.user.send.assert_awaited_once()
+        args = interaction.followup.send.call_args
+        self.assertIn("Discord 50007", args.args[0])
+        self.assertIn("No DM delivery was confirmed", args.args[0])
+        self.assertEqual(args.kwargs['view'].children[0].url, config.HOUSEOFASHER_INVITE_URL)
+        args.kwargs['view'].stop()
+
+    async def test_invalid_payload_not_misdiagnosed_as_private_dms(self):
+        interaction = self.interaction()
+        interaction.user.send.side_effect = discord.HTTPException(
+            MagicMock(status=400, reason="Bad Request"), {"code": 50035, "message": "Invalid Form Body"})
+        await PublicBotCog.houseofasher.callback(self.cog, interaction, private=True)
+        content = interaction.followup.send.call_args.args[0]
+        self.assertIn("message format", content)
+        self.assertIn("50035", content)
+        self.assertNotIn("Privacy settings", content)
+
+    async def test_long_custom_invitation_is_one_dm_with_complete_attachment(self):
+        interaction = self.interaction()
+        captured = {}
+        async def send(content, **kwargs):
+            captured['body'] = kwargs['file'].fp.read().decode('utf-8')
+            captured['file'] = kwargs['file']
+            self.assertLessEqual(len(content), 2000)
+        interaction.user.send.side_effect = send
+        with patch('config.WELCOME_DM_MESSAGE', 'Long invitation. ' * 200):
+            await PublicBotCog.houseofasher.callback(self.cog, interaction, private=True)
+        interaction.user.send.assert_awaited_once()
+        self.assertIn('Taylor', captured['body'])
+        self.assertEqual(captured['body'].count('Long invitation. '), 200)
+        self.assertIn(config.HOUSEOFASHER_INVITE_URL, captured['body'])
+        self.assertTrue(captured['file'].fp.closed)
+
+    async def test_zero_eligible_batch_explains_opt_in_and_queues_nothing(self):
+        worker = self.worker()
+        self.bot.get_cog.return_value = None
+        interaction = self.interaction()
+        member = self.member()
+        member.id = 40
+        member.bot = False
+        interaction.guild.members = [member]
+        interaction.guild.me.guild_permissions.ban_members = False
+        await ReinviteCog.reinvite.callback(worker, interaction, dry_run=False)
+        self.assertIsNone(await self.db.pending_delivery())
+        content = interaction.followup.send.call_args.args[0]
+        self.assertIn('No eligible recipients', content)
+        self.assertIn('opted in to invitation DMs: 0', content)
+        self.assertIn('/houseofasher_updates enabled:True', content)
+
+    async def test_latest_campaign_status_does_not_require_legacy_default_name(self):
+        worker = self.worker()
+        await self.db.enqueue(10, 'older', [40], 'body')
+        await self.db.enqueue(10, 'testing', [41], 'body')
+        interaction = self.interaction()
+        await ReinviteCog.reinvite_status.callback(worker, interaction)
+        content = interaction.followup.send.call_args.args[0]
+        self.assertIn('Campaign: testing', content)
+        self.assertIn('Queued: 1', content)
+        self.assertNotIn('after a restart', content)
+        self.assertNotIn('Unconfirmed', content)
+
+    async def test_unknown_campaign_lists_available_batches(self):
+        worker = self.worker()
+        await self.db.enqueue(10, 'real-campaign', [40], 'body')
+        interaction = self.interaction()
+        await ReinviteCog.reinvite_status.callback(worker, interaction, campaign='wrong name')
+        content = interaction.followup.send.call_args.args[0]
+        self.assertIn('No delivery records found for that campaign', content)
+        self.assertIn('real-campaign', content)
+        self.assertIn('defaults to a preview', content)
+
+    async def test_status_explains_empty_preview_without_uncertainty_warning(self):
+        worker = self.worker()
+        interaction = self.interaction()
+        await ReinviteCog.reinvite_status.callback(worker, interaction)
+        content = interaction.followup.send.call_args.args[0]
+        self.assertIn('defaults to a preview', content)
+        self.assertIn('dry_run:False', content)
+        self.assertNotIn('Unconfirmed', content)
+        self.assertNotIn('False', content.replace('dry_run:False', ''))
+
+    async def test_status_distinguishes_inflight_from_interrupted_attempt(self):
+        worker = self.worker()
+        await self.db.enqueue(10, 'testing', [40], 'body')
+        row = await self.db.pending_delivery()
+        await self.db.claim_delivery(row)
+        interaction = self.interaction()
+        await ReinviteCog.reinvite_status.callback(worker, interaction)
+        self.assertIn('Unconfirmed attempts: 1', interaction.followup.send.call_args.args[0])
+        worker._inflight = row
+        await ReinviteCog.reinvite_status.callback(worker, interaction)
+        content = interaction.followup.send.call_args.args[0]
+        self.assertIn('Sending now: 1', content)
+        self.assertNotIn('Unconfirmed', content)
+
+    async def test_status_reports_stored_failure_reasons(self):
+        worker = self.worker()
+        await self.db.enqueue(10, 'testing', [40], 'body')
+        row = await self.db.pending_delivery()
+        await self.db.delivery_status(row, 'failed', 'Discord 50007: recipient DM refused')
+        interaction = self.interaction()
+        await ReinviteCog.reinvite_status.callback(worker, interaction)
+        content = interaction.followup.send.call_args.args[0]
+        self.assertIn('Failed: 1', content)
+        self.assertIn('50007', content)
+
+    async def test_worker_dm_rejection_code_reaches_campaign_status(self):
+        worker = self.worker()
+        self.bot.get_guild.return_value.id = 10
+        await self.settings.consent(40, True)
+        user = MagicMock(bot=False)
+        user.send = AsyncMock(side_effect=discord.Forbidden(
+            MagicMock(status=403, reason='Forbidden'), {'code': 50007, 'message': 'Cannot send messages to this user'}))
+        self.bot.get_user.return_value = user
+        await self.db.enqueue(10, 'testing', [40], 'body')
+        await ReinviteCog.deliver.coro(worker)
+        self.assertIsNone(worker._inflight)
+        interaction = self.interaction()
+        await ReinviteCog.reinvite_status.callback(worker, interaction)
+        content = interaction.followup.send.call_args.args[0]
+        self.assertIn('Failed: 1', content)
+        self.assertIn('Discord 50007', content)
+        self.assertNotIn('Unconfirmed', content)
+
+    async def test_campaign_suggestions_are_scoped_to_server_and_admins(self):
+        worker = self.worker()
+        await self.db.enqueue(10, 'testing', [40], 'body')
+        await self.db.enqueue(11, 'other-server', [40], 'body')
+        interaction = self.interaction()
+        interaction.user.guild_permissions.manage_guild = True
+        choices = await worker.campaign_suggestions(interaction, 'test')
+        self.assertEqual([choice.value for choice in choices], ['testing'])
+        interaction.user.guild_permissions.manage_guild = False
+        self.assertEqual(await worker.campaign_suggestions(interaction, ''), [])
+
+    async def test_unconfigured_home_server_is_reported_before_recipient_selection(self):
+        worker = self.worker()
+        worker._targets = AsyncMock()
+        interaction = self.interaction()
+        with patch('config.HOUSEOFASHER_GUILD_ID', 0):
+            await ReinviteCog.reinvite.callback(worker, interaction, dry_run=False)
+            self.assertIn('HOUSEOFASHER_GUILD_ID', interaction.followup.send.call_args.args[0])
+            await ReinviteCog.reinvite_status.callback(worker, interaction)
+            self.assertIn('HOUSEOFASHER_GUILD_ID', interaction.followup.send.call_args.args[0])
+        worker._targets.assert_not_awaited()
+
+    async def test_cancel_uses_latest_campaign_and_reports_actual_count(self):
+        worker = self.worker()
+        await self.db.enqueue(10, 'older', [40], 'body')
+        await self.db.enqueue(10, 'testing', [41, 42], 'body')
+        interaction = self.interaction()
+        await ReinviteCog.reinvite_cancel.callback(worker, interaction)
+        self.assertEqual(await self.db.campaign_status(10, 'older'), {'pending': 1})
+        self.assertEqual(await self.db.campaign_status(10, 'testing'), {'cancelled': 2})
+        self.assertIn('Cancelled 2 pending deliveries for testing', interaction.followup.send.call_args.args[0])
+
     async def test_future_promotion_consent_can_be_revoked_and_survives_restart(self):
         await self.settings.consent(40, True)
         self.assertTrue(await PublicSettings(CommunityDB(self.db.path)).subscribed(40))

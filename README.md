@@ -580,3 +580,30 @@ Discord clients may need their command menu reopened after an update.
 
 These changes take effect after deploying/restarting the updated bot with its
 Discord token. An offline test cannot update a live server's command registry.
+
+
+### Invitation command troubleshooting
+
+`/houseofasher private:True` attempts one requested DM. If Discord refuses it,
+the private command reply now includes the Discord error code and a working Join
+button. Error 50007 means Discord cannot send to that user; privacy settings,
+blocks, or other delivery rules may be involved. The bot cannot override those
+settings. "Only you can see this" is Discord's normal ephemeral command reply,
+not another delivery failure. Other API errors (such as invalid message format)
+are reported separately. Long custom requested invitations are sent intact as a
+text attachment in one DM rather than exceeding Discord's content limit.
+
+`/reinvite` defaults to `dry_run:True`: a preview sends nothing and does not create
+delivery records. To queue an eligible batch, use `dry_run:False` and a campaign
+name. Zero-recipient results explain directory/opt-in counts; existing campaign
+recipients are not requeued. Public batches require the configured Houseofasher
+server and users' invitation opt-in, as before. Missing home-server configuration
+and commands run in the wrong server receive distinct explanations.
+
+`/reinvite_status` defaults to the most recently queued campaign, with campaign
+autocomplete for selecting another batch. An unknown name lists available batches.
+Delivery counts and stored failure reasons are shown directly. Interrupted-attempt
+warnings appear only for actual unconfirmed entries, separately from the current
+in-flight send. `/reinvite_cancel` uses the same latest-campaign default and reports
+the number of pending entries actually cancelled. Attempts already sending cannot
+be cancelled and are not automatically resent after a restart.

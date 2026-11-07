@@ -12,6 +12,7 @@ from discord.ext import commands, tasks
 import config
 from core.community_db import database
 from core.welcome import render_invitation
+from core.invitation_delivery import dm_failure
 from core.public_bot import settings as public_settings
 
 log = logging.getLogger("zafven.reinvite")
@@ -25,6 +26,7 @@ class ReinviteCog(commands.Cog):
         self.public_settings = public_settings
         self._discovery: dict[int, asyncio.Task] = {}
         self._queue_lock = asyncio.Lock()
+        self._inflight = None
         self.deliver.start()
 
     def cog_unload(self):
@@ -125,6 +127,16 @@ class ReinviteCog(commands.Cog):
                 return invite.url
         return None
 
+    def _home_problem(self, guild):
+        if not config.PUBLIC_BOT_MODE:
+            return None
+        if not config.HOUSEOFASHER_GUILD_ID:
+            return ("Batch invitations are not configured. The bot owner must set HOUSEOFASHER_GUILD_ID "
+                    "to the Houseofasher server ID in the deployment and restart the bot.")
+        if guild.id != config.HOUSEOFASHER_GUILD_ID:
+            return "Public batch invitations run only inside the configured Houseofasher server. Run /reinvite there."
+        return None
+
     @app_commands.command(name="reinvite", description="Preview or queue the invitation to current and known former members.")
     @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.guild_only()
@@ -134,12 +146,9 @@ class ReinviteCog(commands.Cog):
     async def reinvite(self, interaction: discord.Interaction, audience: str = "all",
                        dry_run: bool = True, campaign: str = CAMPAIGN):
         await interaction.response.defer(ephemeral=True)
-        if config.PUBLIC_BOT_MODE and (
-            not config.HOUSEOFASHER_GUILD_ID or interaction.guild.id != config.HOUSEOFASHER_GUILD_ID
-        ):
+        if problem := self._home_problem(interaction.guild):
             await interaction.followup.send(
-                "In public mode, batch promotions run only in the configured Houseofasher server "
-                "and only for users who opted in with /houseofasher_updates. "
+                problem + " No DMs were queued. Recipients opt in with /houseofasher_updates. "
                 "For a one-time requested invite, use /houseofasher private:True.", ephemeral=True)
             return
         campaign = campaign.strip()
@@ -153,12 +162,26 @@ class ReinviteCog(commands.Cog):
             return
         async with self._queue_lock:
             targets = await self._targets(interaction.guild, audience)
+            known = {int(row["user_id"]) for row in await self.db.members(interaction.guild.id)}
+            known.update(member.id for member in interaction.guild.members if not member.bot)
+            summary = f"Known members: {len(known)}. Eligible for {audience}: {len(targets)}. "
+            if config.PUBLIC_BOT_MODE:
+                subscribed = known & await self.public_settings.subscribers()
+                summary += f"Known members opted in to invitation DMs: {len(subscribed)}. "
+            if not targets:
+                await interaction.followup.send(
+                    summary + "No eligible recipients, so no DMs were queued. "
+                    + ("Users choose future invitation DMs with /houseofasher_updates enabled:True. " if config.PUBLIC_BOT_MODE else "")
+                    + "Use /discover_members or /backup_history to expand the known-member directory. "
+                    "For a one-time invitation to yourself, use /houseofasher private:True.", ephemeral=True)
+                return
             if dry_run:
                 state = await self.db.campaign_status(interaction.guild.id, campaign)
                 await interaction.followup.send(
-                    f"Preview: {len(targets)} known {audience} member(s). Campaign: {campaign}. "
+                    f"Preview only — {summary}Campaign: {campaign}. "
                     f"Existing deliveries: {state or 'none'}. No DMs sent. "
-                    "Use dry_run:False to queue. Historical membership may be incomplete.", ephemeral=True)
+                    "This preview does not create a delivery campaign. Use /reinvite dry_run:False with the same campaign name to queue. "
+                    "Historical membership may be incomplete.", ephemeral=True)
                 return
             link = config.HOUSEOFASHER_INVITE_URL if config.PUBLIC_BOT_MODE else await self._link(interaction.guild)
             if not link:
@@ -169,36 +192,101 @@ class ReinviteCog(commands.Cog):
                 await interaction.followup.send("Invitation exceeds Discord's 2,000-character message limit. No DMs queued.", ephemeral=True)
                 return
             added = await self.db.enqueue(interaction.guild.id, campaign, targets, body)
+        if not added:
+            await interaction.followup.send(
+                "No new recipients were added: eligible recipients already have entries in this campaign. "
+                "Use /reinvite_status and select " + discord.utils.escape_markdown(campaign) +
+                " to see sent, failed, or pending deliveries. Existing attempts are not automatically resent.",
+                ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+            return
         await interaction.followup.send(
             f"Queued {added} new recipient(s) for {campaign}. Existing campaign recipients were not added twice. "
             "Use /reinvite_status or /reinvite_cancel.", ephemeral=True)
 
     @app_commands.command(name="reinvite_status", description="See batch invitation delivery counts.")
+    @app_commands.describe(campaign="Choose an existing batch; omit to show the most recently queued campaign.")
     @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.guild_only()
-    async def reinvite_status(self, interaction: discord.Interaction, campaign: str = CAMPAIGN):
+    async def reinvite_status(self, interaction: discord.Interaction, campaign: str | None = None):
         await interaction.response.defer(ephemeral=True)
-        state = await self.db.campaign_status(interaction.guild.id, campaign)
-        await interaction.followup.send(f"{campaign}: {state or 'no deliveries'}. "
-            f"Member discovery running: {interaction.guild.id in self._discovery}. "
-            "'sending' after a restart means delivery is uncertain; it is not automatically resent.", ephemeral=True)
+        campaigns = await self.db.campaign_names(interaction.guild.id, limit=5)
+        if campaign is None:
+            campaign = campaigns[0] if campaigns else None
+        else:
+            campaign = campaign.strip()
+            if not campaign or len(campaign) > 100:
+                await interaction.followup.send("Campaign name must be 1–100 characters.", ephemeral=True)
+                return
+        state = await self.db.campaign_status(interaction.guild.id, campaign) if campaign else {}
+        if not state:
+            message = ("No delivery records found" + (" for that campaign" if campaign else " in this server") + ". "
+                "/reinvite defaults to a preview, which does not send or queue DMs. "
+                "To queue eligible recipients, run /reinvite dry_run:False and set the campaign name. "
+                "Use the campaign suggestions in /reinvite_status to select an existing batch.")
+            if campaigns:
+                message += "\nQueued campaigns: " + ", ".join(discord.utils.escape_markdown(name) for name in campaigns)
+            if problem := self._home_problem(interaction.guild):
+                message += "\n" + problem
+        else:
+            message = "Campaign: " + discord.utils.escape_markdown(campaign) + "\n"
+            labels = {"pending": "Queued", "sent": "Sent", "failed": "Failed", "skipped": "Skipped", "cancelled": "Cancelled"}
+            message += " · ".join(f"{label}: {state.get(key, 0)}" for key, label in labels.items())
+            if state.get("sending"):
+                active = int(bool(self._inflight and str(self._inflight["guild_id"]) == str(interaction.guild.id)
+                                  and self._inflight["campaign"] == campaign))
+                uncertain = max(0, state["sending"] - active)
+                if active:
+                    message += f"\nSending now: {active}."
+                if uncertain:
+                    message += f"\nUnconfirmed attempts: {uncertain}. These may be from an interrupted run and are not automatically resent, to avoid duplicate DMs."
+            for failure in await self.db.campaign_errors(interaction.guild.id, campaign):
+                reason = discord.utils.escape_markdown(failure["error"][:220]).replace("@", "＠")
+                message += f"\n{failure['n']} recipient(s): {reason}"
+        if interaction.guild.id in self._discovery:
+            message += "\nMember discovery is still running."
+        await interaction.followup.send(message, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
 
     @app_commands.command(name="reinvite_cancel", description="Cancel invitations that have not started sending.")
+    @app_commands.describe(campaign="Choose a batch; omit to cancel pending entries in the most recently queued campaign.")
     @app_commands.checks.has_permissions(manage_guild=True)
     @app_commands.guild_only()
-    async def reinvite_cancel(self, interaction: discord.Interaction, campaign: str = CAMPAIGN):
+    async def reinvite_cancel(self, interaction: discord.Interaction, campaign: str | None = None):
         await interaction.response.defer(ephemeral=True)
-        await self.db.cancel_campaign(interaction.guild.id, campaign)
-        await interaction.followup.send("Pending deliveries cancelled. An in-flight DM may still complete.", ephemeral=True)
+        if campaign is None:
+            names = await self.db.campaign_names(interaction.guild.id, limit=1)
+            campaign = names[0] if names else None
+        if campaign is None:
+            await interaction.followup.send("No queued campaigns were found in this server.", ephemeral=True)
+            return
+        campaign = campaign.strip()
+        if not campaign or len(campaign) > 100:
+            await interaction.followup.send("Campaign name must be 1–100 characters.", ephemeral=True)
+            return
+        count = await self.db.cancel_campaign(interaction.guild.id, campaign)
+        await interaction.followup.send(
+            f"Cancelled {count} pending deliveries for " + discord.utils.escape_markdown(campaign) +
+            ". Already-sending messages are not cancelled and may still complete.",
+            ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+
+    @reinvite.autocomplete("campaign")
+    @reinvite_status.autocomplete("campaign")
+    @reinvite_cancel.autocomplete("campaign")
+    async def campaign_suggestions(self, interaction: discord.Interaction, current: str):
+        if interaction.guild is None or not interaction.user.guild_permissions.manage_guild:
+            return []
+        names = await self.db.campaign_names(interaction.guild.id, search=current)
+        return [app_commands.Choice(name=name, value=name) for name in names]
 
     @tasks.loop(seconds=2)
     async def deliver(self):
+        row = None
         try:
             row = await self.db.pending_delivery()
             if row is None:
                 return
             if not await self.db.claim_delivery(row):
                 return  # Cancelled or claimed elsewhere between lookup and send.
+            self._inflight = row
             guild = self.bot.get_guild(int(row["guild_id"]))
             if guild is None:
                 await self.db.delivery_status(row, "skipped", "Bot is no longer in the server")
@@ -217,15 +305,17 @@ class ReinviteCog(commands.Cog):
             try:
                 await user.send(row["body"], allowed_mentions=discord.AllowedMentions.none())
             except discord.HTTPException as exc:
-                await self.db.delivery_status(row, "failed", str(exc))
+                await self.db.delivery_status(row, "failed", dm_failure(exc))
             else:
                 await self.db.delivery_status(row, "sent")
         except discord.HTTPException as exc:
             if row:
-                await self.db.delivery_status(row, "failed", str(exc))
+                await self.db.delivery_status(row, "failed", dm_failure(exc))
             log.warning("Reinvite user lookup failed: %s", exc)
         except Exception:
             log.exception("Reinvite delivery iteration failed")
+        finally:
+            self._inflight = None
 
     @deliver.before_loop
     async def before_delivery(self):

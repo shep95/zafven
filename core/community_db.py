@@ -119,10 +119,22 @@ class CommunityDB:
             "SELECT status,COUNT(*) n FROM deliveries WHERE guild_id=? AND campaign=? GROUP BY status",
             (str(guild_id), campaign))})
 
-    async def cancel_campaign(self, guild_id: int, campaign: str) -> None:
-        await self._call(lambda c: c.execute(
+    async def campaign_names(self, guild_id: int, search: str = "", limit: int = 25) -> list[str]:
+        return await self._call(lambda c: [r["campaign"] for r in c.execute(
+            "SELECT campaign,MAX(rowid) latest FROM deliveries WHERE guild_id=? "
+            "AND instr(lower(campaign),lower(?))>0 GROUP BY campaign ORDER BY latest DESC LIMIT ?",
+            (str(guild_id), search, max(1, min(limit, 25))))])
+
+    async def campaign_errors(self, guild_id: int, campaign: str) -> list[dict]:
+        return await self._call(lambda c: [dict(r) for r in c.execute(
+            "SELECT error,COUNT(*) n FROM deliveries WHERE guild_id=? AND campaign=? "
+            "AND error!='' AND status IN ('failed','skipped') GROUP BY error ORDER BY n DESC LIMIT 3",
+            (str(guild_id), campaign))])
+
+    async def cancel_campaign(self, guild_id: int, campaign: str) -> int:
+        return await self._call(lambda c: c.execute(
             "UPDATE deliveries SET status='cancelled' WHERE guild_id=? AND campaign=? AND status='pending'",
-            (str(guild_id), campaign)))
+            (str(guild_id), campaign)).rowcount)
 
 
 database = CommunityDB()
