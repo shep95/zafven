@@ -23,6 +23,7 @@ log = logging.getLogger("zafven")
 INITIAL_COGS = [
     "cogs.vibe_cog",
     "cogs.imagine_cog",
+    "cogs.quote_cog",
     "cogs.audit_cog",
     "cogs.tools_cog",
     "cogs.synthesize_cog",

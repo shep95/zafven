@@ -24,6 +24,7 @@ class HelpCog(commands.Cog):
             value=("`/ask <question>` - ask Zafven anything\n"
                    "`/vibe [share]` - a playful read of your own chat style\n"
                    "`/imagine <image> [question]` - describe an uploaded image\n"
+                   "`/quote [text] [image] [message_link]` - quote card with a profile picture; or right-click → Quote this message\n"
                    "Mention Bible references like `John 3:16` and Zafven replies with exact verses "
                    "from configured Bible translations."),
             inline=False)

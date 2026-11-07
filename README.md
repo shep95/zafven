@@ -93,6 +93,50 @@ References: [Discord installation/OAuth](https://github.com/discord/discord-api-
   small number of readable channels and passes attributed snippets into the prompt.
   If she uses those snippets, she is instructed to quote the channel and sender.
 
+### Natural replies, image chat, and quote cards
+
+The personality now favors creative, practical, socially aware answers over jargon
+or explanations of its reasoning machinery. Simple questions get short answers;
+complex questions and explicit requests for detail can expand. Replies should address
+the exact current question, avoid recycled openings/metaphors and repeated explanations,
+and preserve factual consistency. These are model instructions, not a guarantee of
+unique wording or a substitute for live evaluation.
+
+For image chat, mention Zafven with an uploaded image, or mention her while replying
+to an image message in the same channel. An image-only reply to a Zafven message
+also works. It sends the first image attachment from the current message (or the
+referenced message when no current attachments exist) to Gemini vision. `/imagine`
+remains available and now defaults to a brief factual description/readable text
+rather than an unsolicited symbolic interpretation.
+
+Quote-image options:
+
+- `/quote text:"your words"` creates a PNG quote card with your profile picture.
+- `/quote text:"your words" image:<upload>` uses the image as a darkened background.
+- `/quote image:<upload>` generates a short original quote inspired by the image,
+  labels it AI-generated, and uses the requester's avatar. It does not claim that
+  a person pictured said those words.
+- `/quote message_link:<Discord message URL>` uses the actual message text and
+  its author's avatar. A source image attachment becomes the background when present.
+- Right-click/tap a message → Apps → **Quote this message** is the shortcut.
+
+Custom text uses the requester's avatar; it cannot override another member's linked
+message text and retain that member's attribution. Message links must belong to the
+same server, be visible to the requester, and be readable by the bot. The source
+text is rendered as displayed text (including resolved mention names).
+
+Cards are rendered locally with Pillow at 1200×900. The quote limit is 700 characters;
+oversized text is rejected rather than silently cut. Images are bounded to 8 MB and
+20 million pixels; real image bytes are validated, orientation is corrected, and
+animated uploads use the first frame. Vision input is resized to at most 2000 pixels
+on either side. Profile-picture failures can fall back to initials. Output uses
+normal Discord attachment permissions and can fail if those are missing.
+
+Railway's build installs DejaVu fonts; Windows uses Arial when available. An optional
+`QUOTE_FONT_FILE` environment variable can select a font with appropriate language
+coverage. Emoji/script support depends on that font. Quote cards with supplied text
+do not call Gemini; image-inspired writing and image reading do.
+
 ### Zafven v74.4 personality, adaptation, and personal memory
 
 The personality core is derived from the supplied portable v74.4 ZIP's system
@@ -366,6 +410,7 @@ python scripts/smoke_test.py
 python scripts/community_test.py
 python scripts/personality_memory_test.py
 python scripts/public_bot_test.py
+python scripts/image_quote_test.py
 ```
 
 ## Setup

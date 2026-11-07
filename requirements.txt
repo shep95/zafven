@@ -12,3 +12,5 @@ aiohttp>=3.9.0
 # Resolve YouTube / search queries to a streamable audio URL for the /play music
 # player. Keep it fresh — YouTube changes often and yt-dlp ships frequent fixes.
 yt-dlp>=2024.8.6
+# Local quote-card composition, avatar masking, and bounded image decoding.
+Pillow>=10.4.0

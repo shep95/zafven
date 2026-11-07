@@ -23,6 +23,8 @@ from core import chat_memory, textsplit, persona, emotions, culture, custombrain
 from core.brain_loader import load as load_brain
 from core.model_gateway import GatewayError
 from core.user_memory import memory as user_memory, prompt_context, is_memory_channel
+from core.chat_images import image_from_message
+from core.quote_images import QuoteImageError
 
 log = logging.getLogger("zafven.chat")
 
@@ -151,7 +153,7 @@ class ChatCog(commands.Cog):
     async def on_message(self, message: discord.Message) -> None:
         if not config.CHAT_ENABLED:
             return
-        if message.author.bot or message.guild is None or not message.content.strip():
+        if message.author.bot or message.guild is None or not (message.content.strip() or message.attachments):
             return
         if is_memory_channel(message.channel):
             return
@@ -177,7 +179,14 @@ class ChatCog(commands.Cog):
         if not message.channel.permissions_for(message.guild.me).send_messages:
             return
 
-        if addressed and PSYCH_REQUEST_RE.search(message.content):
+        try:
+            image_bytes = await image_from_message(message) if addressed else None
+        except (QuoteImageError, discord.HTTPException) as exc:
+            await message.reply(str(exc) if isinstance(exc, QuoteImageError) else "I couldn't download that image. Try sending it again.",
+                                mention_author=False)
+            return
+
+        if image_bytes is None and addressed and PSYCH_REQUEST_RE.search(message.content):
             target = self._psych_target(message)
             if target is not None:
                 await self._psych_breakdown(message, target)
@@ -215,11 +224,14 @@ class ChatCog(commands.Cog):
         try:
             async with message.channel.typing():
                 transcript = await self._context(message)
+                system = self._system(message.author.display_name, notes, directive, mood, vibe, custom, lessons, personal)
+                if image_bytes is not None:
+                    system += "\n\nIMAGE REQUEST:\n" + load_brain("imagine")
                 raw = await self.bot.gateway.narrate(  # type: ignore[attr-defined]
-                    self._system(message.author.display_name, notes, directive, mood, vibe, custom,
-                                 lessons, personal),
+                    system,
                     transcript, web_search=bool(SEARCH_HINT_RE.search(message.content)),
-                    max_tokens=900, model=config.CHAT_MODEL)
+                    max_tokens=1400, model=config.CHAT_MODEL,
+                    image_bytes=image_bytes, image_mime="image/jpeg" if image_bytes is not None else None)
         except GatewayError as exc:
             log.warning("chat reply failed: %s", exc)
             # Don't vanish — let them know she heard them but glitched, so they
@@ -316,8 +328,12 @@ class ChatCog(commands.Cog):
         except discord.HTTPException:
             pass
         lines.reverse()
-        lines.append(f"{message.author.display_name}: {message.content}")
-        convo = "\n".join(lines)[:8000]
+        latest = f"{message.author.display_name}: {message.content or '(uploaded image — describe what you see)'}"
+        # Keep the actual question intact. Taking the first 8,000 characters of
+        # history plus the question could drop the latest message entirely.
+        budget = max(0, 8000 - len(latest) - 1)
+        history = "\n".join(lines)
+        convo = ((history[-budget:] + "\n") if budget and history else "") + latest
         sources = await self._cross_channel_sources(message)
         source_block = ""
         if sources:

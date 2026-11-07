@@ -6,6 +6,7 @@ real people or locating where a photo was taken (that would be surveillance).
 from __future__ import annotations
 
 import logging
+import asyncio
 
 import discord
 from discord import app_commands
@@ -13,6 +14,7 @@ from discord.ext import commands
 
 from core.brain_loader import load as load_brain
 from core.model_gateway import GatewayError
+from core.quote_images import vision_image, QuoteImageError
 
 log = logging.getLogger("zafven.imagine")
 
@@ -38,16 +40,20 @@ class ImagineCog(commands.Cog):
             return
 
         await interaction.response.defer(thinking=True)
-        data = await image.read()
+        try:
+            data = await asyncio.to_thread(vision_image, await image.read())
+        except (QuoteImageError, discord.HTTPException):
+            await interaction.followup.send("I couldn't read that image. Try PNG, JPEG, WebP, or GIF.")
+            return
         user_prompt = (
-            (question.strip() if question else "Describe this image, then interpret its mood and symbolism.")
+            (question.strip() if question else "Briefly explain what is visible, including important readable text. Interpret symbolism only if asked.")
             + "\n(Describe and interpret only — do not identify real people or where it was taken.)"
         )
 
         try:
             reading = await self.bot.gateway.narrate(  # type: ignore[attr-defined]
                 _system_prompt(), user_prompt,
-                image_bytes=data, image_mime=image.content_type, web_search=False)
+                image_bytes=data, image_mime="image/jpeg", web_search=False)
         except GatewayError as exc:
             log.warning("imagine failed: %s", exc)
             await interaction.followup.send("🔌 The vision engine is unreachable right now. Try again shortly.")
