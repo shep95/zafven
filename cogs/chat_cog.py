@@ -262,7 +262,12 @@ class ChatCog(commands.Cog):
         voice = self.bot.get_cog("VoiceCog")
         if voice is not None:
             try:
-                await voice.maybe_speak(message.guild, visible)  # type: ignore[attr-defined]
+                pool = getattr(self.bot, "voice_pool", None)
+                from core.voice_pool import VoicePool
+                if isinstance(pool, VoicePool):
+                    await pool.speak_reply(message.guild, message.author.id, visible)
+                else:
+                    await voice.maybe_speak(message.guild, visible)  # type: ignore[attr-defined]
             except Exception:  # noqa: BLE001 — voice must never break chat
                 pass
 

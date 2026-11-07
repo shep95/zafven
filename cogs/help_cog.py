@@ -57,7 +57,8 @@ class HelpCog(commands.Cog):
             "Managed by Asher or the bot owner. Learns provisional methods, not private thoughts."), inline=False)
         embed.add_field(
             name="Voice",
-            value=("`/vc join` - bring her into your voice channel; she can speak replies aloud.\n"
+            value=("`/voicebots` - voice capacity and helper bot invite links.\n"
+                   "`/vc join` - bring her into your voice channel; she can speak replies aloud.\n"
                    "`/say <text>` / `/vc speak <on/off>` / `/vc leave`"),
             inline=False)
         embed.add_field(

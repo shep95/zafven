@@ -9,12 +9,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from contextlib import AsyncExitStack
 
 import discord
 from discord.ext import commands
 
 import config
 from core.model_gateway import ModelGateway
+from core.voice_pool import VoicePool
+from core.voice_workers import VoiceWorker
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
@@ -38,6 +41,7 @@ INITIAL_COGS = [
     "cogs.bible_cog",
     "cogs.chat_cog",
     "cogs.voice_cog",
+    "cogs.voice_pool_cog",
     "cogs.music_cog",
     "cogs.culture_cog",
     "cogs.brain_cog",
@@ -91,6 +95,7 @@ class Zafven(commands.Bot):
     def __init__(self) -> None:
         super().__init__(command_prefix="!", intents=build_intents(), help_command=None)
         self.gateway = ModelGateway()
+        self.voice_pool = VoicePool(self)
 
     async def setup_hook(self) -> None:
         _load_opus()
@@ -144,8 +149,35 @@ async def main() -> None:
     if problems:
         raise SystemExit("Configuration errors:\n  - " + "\n  - ".join(problems)
                          + "\nCopy .env.example to .env (or set Railway Variables) and fill them in.")
-    async with Zafven() as bot:
-        await bot.start(config.TOKEN)
+    async with AsyncExitStack() as stack:
+        bot = await stack.enter_async_context(Zafven())
+        primary_task = asyncio.create_task(bot.start(config.TOKEN))
+        ready_task = asyncio.create_task(bot.wait_until_ready())
+        tasks = [primary_task, ready_task]
+        try:
+            done, _ = await asyncio.wait((primary_task, ready_task), return_when=asyncio.FIRST_COMPLETED)
+            if primary_task in done:
+                await primary_task
+                return
+            await ready_task
+            for index, token in enumerate(config.VOICE_BOT_TOKENS, 1):
+                worker = await stack.enter_async_context(VoiceWorker(bot.gateway))
+                bot.voice_pool.add(worker)
+                task = asyncio.create_task(worker.start(token))
+                tasks.append(task)
+                task.add_done_callback(lambda task, index=index: _worker_finished(task, index))
+            await primary_task
+        finally:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+
+def _worker_finished(task, index):
+    if not task.cancelled() and task.exception() is not None:
+        # Log only the class, never token-bearing configuration or request data.
+        log.error("Voice helper %s stopped (%s); other accounts remain available.",
+                  index, type(task.exception()).__name__)
 
 
 if __name__ == "__main__":

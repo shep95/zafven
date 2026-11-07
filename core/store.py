@@ -35,7 +35,7 @@ class DiscordStore:
         if not self.channel:
             return
         try:
-            async for msg in self.channel.history(limit=50):
+            async for msg in self.channel.history(limit=None):
                 if msg.author.id != self.guild.me.id or not msg.content.startswith("[zafven-store:"):
                     continue
                 ns = msg.content[len("[zafven-store:"):].rstrip("]")

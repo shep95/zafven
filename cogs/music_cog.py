@@ -21,6 +21,7 @@ from discord.ext import commands
 
 import config
 from core import music, store
+from core.voice_pool import VoicePool, voice_command, voice_connection
 
 log = logging.getLogger("zafven.music")
 
@@ -74,7 +75,29 @@ class MusicCog(commands.Cog):
         self._states: dict[int, _GuildState] = {}
         self._rejoin_hist: dict[int, list[float]] = {}  # guild_id -> recent rejoin attempt times
         self._restored = False                          # on_ready runs the restore once
+        self._restoring_all = True
+        self._restore_ready: set[int] = set()
         self._share_requests: dict[tuple[int, int], tuple[int, list[str]]] = {}
+        pool = getattr(bot, "voice_pool", None)
+        if isinstance(pool, VoicePool) and bot is not pool.primary:
+            primary_music = pool.primary.get_cog("MusicCog")
+            if primary_music is not None:
+                self._share_requests = primary_music._share_requests
+
+
+    async def _store(self, guild):
+        pool = getattr(self.bot, "voice_pool", None)
+        if isinstance(pool, VoicePool):
+            primary_guild = pool.primary.get_guild(guild.id)
+            if primary_guild is None and self.bot is not pool.primary:
+                raise RuntimeError("The primary Zafven account must be in this server.")
+            guild = primary_guild or guild
+        return await store.get_store(guild)
+
+    def _session_namespace(self, namespace):
+        if getattr(self.bot, "voice_worker", False) is True:
+            return f"{namespace}_{self.bot.user.id}"
+        return namespace
 
     def _state(self, guild_id: int) -> _GuildState:
         return self._states.setdefault(guild_id, _GuildState())
@@ -93,11 +116,12 @@ class MusicCog(commands.Cog):
 
     async def _save_tremolo(self, guild: discord.Guild, hz: int) -> None:
         try:
-            s = await store.get_store(guild)
-            await s.set(_NS_TREMOLO, {"hz": int(hz)})
+            s = await self._store(guild)
+            await s.set(self._session_namespace(_NS_TREMOLO), {"hz": int(hz)})
         except Exception:  # noqa: BLE001 — persistence is best-effort
             log.exception("failed to persist music frequency")
 
+    @voice_connection
     async def _connect(self, interaction: discord.Interaction):
         """Join the caller's voice channel (or move to it). Returns (vc, error)."""
         voice = getattr(interaction.user, "voice", None)
@@ -273,22 +297,22 @@ class MusicCog(commands.Cog):
             f"➕ queued **{track.title}** ({music.fmt_duration(track.duration)}) — {where}.")
 
     async def _load_default_queries(self, guild: discord.Guild) -> list[str]:
-        s = await store.get_store(guild)
+        s = await self._store(guild)
         data = s.get(_NS_DEFAULT_PLAYLIST, {}) or {}
         return [str(q) for q in data.get("queries", []) if str(q).strip()]
 
     async def _save_default_queries(self, guild: discord.Guild, queries: list[str]) -> None:
-        s = await store.get_store(guild)
+        s = await self._store(guild)
         await s.set(_NS_DEFAULT_PLAYLIST, {"queries": queries})
 
     async def _load_user_queries(self, guild: discord.Guild, user_id: int) -> list[str]:
-        s = await store.get_store(guild)
+        s = await self._store(guild)
         data = s.get(_NS_USER_PLAYLISTS, {}) or {}
         mine = data.get(str(user_id), {}) or {}
         return [str(q) for q in mine.get("queries", []) if str(q).strip()]
 
     async def _save_user_queries(self, guild: discord.Guild, user_id: int, queries: list[str]) -> None:
-        s = await store.get_store(guild)
+        s = await self._store(guild)
         data = dict(s.get(_NS_USER_PLAYLISTS, {}) or {})
         data[str(user_id)] = {"queries": queries}
         await s.set(_NS_USER_PLAYLISTS, data)
@@ -329,12 +353,14 @@ class MusicCog(commands.Cog):
     @app_commands.command(name="play", description="Play a song in your voice channel (YouTube link or search).")
     @app_commands.describe(query="A YouTube/URL link, or words to search for.")
     @app_commands.guild_only()
+    @voice_command
     async def play(self, interaction: discord.Interaction, query: str) -> None:
         await self._enqueue(interaction, query, front=False)
 
     @app_commands.command(name="playnext", description="Queue a song to play NEXT (jumps the line).")
     @app_commands.describe(query="A YouTube/URL link, or words to search for.")
     @app_commands.guild_only()
+    @voice_command
     async def playnext(self, interaction: discord.Interaction, query: str) -> None:
         await self._enqueue(interaction, query, front=True)
 
@@ -368,6 +394,7 @@ class MusicCog(commands.Cog):
         await interaction.response.send_message("Default music cleared.", ephemeral=True)
 
     @defaultmusic.command(name="start", description="Start the server default playlist on loop.")
+    @voice_command
     async def default_start(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(thinking=True)
         await self._queue_queries(interaction, await self._load_default_queries(interaction.guild),
@@ -403,6 +430,7 @@ class MusicCog(commands.Cog):
         await interaction.response.send_message("Your playlist is cleared.", ephemeral=True)
 
     @playlist.command(name="start", description="Start your playlist, or the server default if yours is empty.")
+    @voice_command
     async def playlist_start(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(thinking=True)
         queries = await self._load_user_queries(interaction.guild, interaction.user.id)
@@ -430,6 +458,7 @@ class MusicCog(commands.Cog):
         await interaction.response.send_message(f"Sent {member.display_name} a listen-together request.", ephemeral=True)
 
     @playlist.command(name="accept", description="Accept a pending shared-playlist request.")
+    @voice_command
     async def playlist_accept(self, interaction: discord.Interaction) -> None:
         pending = self._share_requests.pop((interaction.guild.id, interaction.user.id), None)
         if pending is None:
@@ -453,6 +482,7 @@ class MusicCog(commands.Cog):
         app_commands.Choice(name="queue (repeat the whole queue)", value="queue"),
     ])
     @app_commands.guild_only()
+    @voice_command
     async def loop(self, interaction: discord.Interaction, mode: app_commands.Choice[str]) -> None:
         self._state(interaction.guild.id).loop_mode = mode.value
         label = {"off": "off", "track": "🔂 repeating this song", "queue": "🔁 repeating the whole queue"}[mode.value]
@@ -460,6 +490,7 @@ class MusicCog(commands.Cog):
 
     @app_commands.command(name="shuffle", description="Shuffle the songs waiting in the queue.")
     @app_commands.guild_only()
+    @voice_command
     async def shuffle(self, interaction: discord.Interaction) -> None:
         import random
         state = self._state(interaction.guild.id)
@@ -474,6 +505,7 @@ class MusicCog(commands.Cog):
     @app_commands.command(name="remove", description="Remove a song from the queue by its position.")
     @app_commands.describe(position="The number shown in /queue.")
     @app_commands.guild_only()
+    @voice_command
     async def remove(self, interaction: discord.Interaction, position: int) -> None:
         state = self._state(interaction.guild.id)
         if position < 1 or position > len(state.queue):
@@ -486,6 +518,7 @@ class MusicCog(commands.Cog):
 
     @app_commands.command(name="clear", description="Clear the queue (keeps the current song playing).")
     @app_commands.guild_only()
+    @voice_command
     async def clear(self, interaction: discord.Interaction) -> None:
         state = self._state(interaction.guild.id)
         n = len(state.queue)
@@ -494,6 +527,7 @@ class MusicCog(commands.Cog):
 
     @app_commands.command(name="skip", description="Skip the current song.")
     @app_commands.guild_only()
+    @voice_command
     async def skip(self, interaction: discord.Interaction) -> None:
         vc = interaction.guild.voice_client
         if vc is None or not (vc.is_playing() or vc.is_paused()):
@@ -505,6 +539,7 @@ class MusicCog(commands.Cog):
 
     @app_commands.command(name="restartmusic", description="Restart the current song from the beginning.")
     @app_commands.guild_only()
+    @voice_command
     async def restartmusic(self, interaction: discord.Interaction) -> None:
         state = self._state(interaction.guild.id)
         vc = interaction.guild.voice_client
@@ -519,6 +554,7 @@ class MusicCog(commands.Cog):
     @app_commands.command(name="musicfreq", description="Set the optional 4-8 Hz tremolo effect for future songs.")
     @app_commands.describe(hz="0 disables it; 4-8 enables a low-frequency tremolo.")
     @app_commands.guild_only()
+    @voice_command
     async def musicfreq(self, interaction: discord.Interaction, hz: int) -> None:
         if hz != 0 and not 4 <= hz <= 8:
             await interaction.response.send_message("use **0** to turn it off, or a value from **4** to **8** Hz.", ephemeral=True)
@@ -539,6 +575,7 @@ class MusicCog(commands.Cog):
 
     @app_commands.command(name="pause", description="Pause playback.")
     @app_commands.guild_only()
+    @voice_command
     async def pause(self, interaction: discord.Interaction) -> None:
         vc = interaction.guild.voice_client
         if vc is None or not vc.is_playing():
@@ -549,6 +586,7 @@ class MusicCog(commands.Cog):
 
     @app_commands.command(name="resume", description="Resume a paused song.")
     @app_commands.guild_only()
+    @voice_command
     async def resume(self, interaction: discord.Interaction) -> None:
         vc = interaction.guild.voice_client
         if vc is None or not vc.is_paused():
@@ -560,6 +598,7 @@ class MusicCog(commands.Cog):
     @app_commands.command(name="volume", description="Set playback volume (0-200%).")
     @app_commands.describe(percent="Volume percent, 0-200. Default 100.")
     @app_commands.guild_only()
+    @voice_command
     async def volume(self, interaction: discord.Interaction, percent: int) -> None:
         percent = max(0, min(percent, 200))
         state = self._state(interaction.guild.id)
@@ -571,6 +610,7 @@ class MusicCog(commands.Cog):
 
     @app_commands.command(name="nowplaying", description="Show the current song.")
     @app_commands.guild_only()
+    @voice_command
     async def nowplaying(self, interaction: discord.Interaction) -> None:
         state = self._state(interaction.guild.id)
         if state.current is None:
@@ -580,6 +620,7 @@ class MusicCog(commands.Cog):
 
     @app_commands.command(name="queue", description="Show the song queue.")
     @app_commands.guild_only()
+    @voice_command
     async def queue(self, interaction: discord.Interaction) -> None:
         state = self._state(interaction.guild.id)
         if state.current is None and not state.queue:
@@ -601,6 +642,7 @@ class MusicCog(commands.Cog):
 
     @app_commands.command(name="stop", description="Stop the music, clear the queue, and leave the channel.")
     @app_commands.guild_only()
+    @voice_command
     async def stop(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer()
         state = self._state(interaction.guild.id)
@@ -624,6 +666,7 @@ class MusicCog(commands.Cog):
     @app_commands.command(name="247", description="24/7 mode: keep the bot in the voice channel and rejoin after restarts.")
     @app_commands.describe(on="True to stay 24/7, False to turn it off.")
     @app_commands.guild_only()
+    @voice_command
     async def stay247(self, interaction: discord.Interaction, on: bool) -> None:
         if not config.MUSIC_247_ALLOWED:
             await interaction.response.send_message("24/7 mode is disabled on this server.", ephemeral=True)
@@ -651,8 +694,8 @@ class MusicCog(commands.Cog):
     # ── 24/7 persistence + auto-rejoin ───────────────────────────────────
     async def _save_247(self, guild: discord.Guild, channel_id: int | None) -> None:
         try:
-            s = await store.get_store(guild)
-            await s.set(_NS_247, {"channel_id": channel_id} if channel_id else {})
+            s = await self._store(guild)
+            await s.set(self._session_namespace(_NS_247), {"channel_id": channel_id} if channel_id else {})
         except Exception:  # noqa: BLE001 — persistence is best-effort
             log.exception("failed to persist 24/7 state")
 
@@ -664,6 +707,7 @@ class MusicCog(commands.Cog):
         await self._save_247(guild, None)
         log.warning("24/7 disabled in %s: %s", guild.id, reason)
 
+    @voice_connection
     async def leave_and_reset(self, guild: discord.Guild) -> None:
         """Public: a DELIBERATE leave. Turn 24/7 off (so we don't rejoin), clear the
         queue, and disconnect. Called by /vc leave so 'leave' always means leave."""
@@ -684,6 +728,7 @@ class MusicCog(commands.Cog):
             except (discord.HTTPException, asyncio.TimeoutError):
                 pass
 
+    @voice_connection
     async def _rejoin(self, guild: discord.Guild) -> None:
         """Reconnect to the saved 24/7 channel, with loop protection."""
         import time
@@ -728,11 +773,19 @@ class MusicCog(commands.Cog):
         if self._restored:
             return
         self._restored = True
+        try:
+            await self._restore_voice_sessions()
+        finally:
+            self._restoring_all = False
+
+    async def _restore_voice_sessions(self):
         for guild in self.bot.guilds:
             try:
-                s = await store.get_store(guild)
-                cid = (s.get(_NS_247, {}) or {}).get("channel_id")
-                saved_hz = (s.get(_NS_TREMOLO, {}) or {}).get("hz")
+                s = await self._store(guild)
+                cid = (s.get(self._session_namespace(_NS_247), {}) or {}).get("channel_id")
+                saved_hz = (s.get(self._session_namespace(_NS_TREMOLO), {}) or {}).get("hz")
+                cid = int(cid) if cid else None
+                saved_hz = int(saved_hz) if saved_hz is not None else None
             except Exception:  # noqa: BLE001
                 cid = None
                 saved_hz = None
@@ -742,6 +795,8 @@ class MusicCog(commands.Cog):
                 state = self._state(guild.id)
                 state.stay = True
                 state.home_channel_id = int(cid)
+            self._restore_ready.add(guild.id)
+            if cid:
                 await self._rejoin(guild)
 
     @commands.Cog.listener()

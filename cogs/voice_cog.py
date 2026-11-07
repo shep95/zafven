@@ -23,6 +23,7 @@ from discord.ext import commands
 
 import config
 from core import voice_audio, textsplit
+from core.voice_pool import voice_command, voice_connection
 
 log = logging.getLogger("zafven.voice")
 
@@ -42,6 +43,7 @@ class VoiceCog(commands.Cog):
     def _lock(self, guild_id: int) -> asyncio.Lock:
         return self._locks.setdefault(guild_id, asyncio.Lock())
 
+    @voice_connection
     async def _ensure_connected(self, interaction: discord.Interaction):
         """Join/move to the caller's VC using the standard voice client. (vc, error)."""
         voice = getattr(interaction.user, "voice", None)
@@ -49,6 +51,12 @@ class VoiceCog(commands.Cog):
             return None, "join a voice channel first, then call me in."
         channel = voice.channel
         existing = interaction.guild.voice_client
+        if existing is not None and not existing.is_connected():
+            try:
+                await existing.disconnect(force=True)
+            except Exception:
+                pass
+            existing = None
         try:
             if existing and existing.channel == channel:
                 return existing, None
@@ -56,7 +64,7 @@ class VoiceCog(commands.Cog):
                 return None, (
                     f"I'm already connected to **{existing.channel.name}** in this server. "
                     "Discord allows one voice connection per bot account per server; "
-                    "I can be in multiple servers at once, but not two VCs in this server."
+                    "Use /voicebots to add a separate helper account for another room."
                 )
             return await channel.connect(timeout=CONNECT_TIMEOUT, reconnect=True), None
         except asyncio.TimeoutError:
@@ -69,6 +77,7 @@ class VoiceCog(commands.Cog):
     # ── commands ─────────────────────────────────────────────────────────
     @vc.command(name="join", description="Bring Zafven into your voice channel.")
     @app_commands.guild_only()
+    @voice_command
     async def join(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True)
         client, err = await self._ensure_connected(interaction)
@@ -83,6 +92,7 @@ class VoiceCog(commands.Cog):
 
     @vc.command(name="leave", description="Disconnect Zafven from voice.")
     @app_commands.guild_only()
+    @voice_command
     async def leave(self, interaction: discord.Interaction) -> None:
         client = interaction.guild.voice_client
         if not client:
@@ -108,6 +118,7 @@ class VoiceCog(commands.Cog):
     @vc.command(name="speak", description="Toggle whether Zafven speaks her chat replies in the call.")
     @app_commands.describe(on="True to speak replies aloud, False to stay quiet.")
     @app_commands.guild_only()
+    @voice_command
     async def speak(self, interaction: discord.Interaction, on: bool) -> None:
         self._speak[interaction.guild.id] = on
         await interaction.response.send_message(
@@ -116,6 +127,7 @@ class VoiceCog(commands.Cog):
     @app_commands.command(name="say", description="Have Zafven say something out loud in the call.")
     @app_commands.describe(text="What she should say.")
     @app_commands.guild_only()
+    @voice_command
     async def say(self, interaction: discord.Interaction, text: str) -> None:
         await interaction.response.defer(ephemeral=True)
         client, err = await self._ensure_connected(interaction)

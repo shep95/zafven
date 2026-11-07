@@ -21,6 +21,7 @@ def _csv(name: str, default: str) -> list[str]:
 
 # ── Discord ──────────────────────────────────────────────────────────────
 TOKEN: str = os.getenv("DISCORD_TOKEN", "").strip()
+VOICE_BOT_TOKENS: list[str] = _csv("VOICE_BOT_TOKENS", "")
 GUILD_ID: int | None = int(os.getenv("GUILD_ID")) if os.getenv("GUILD_ID", "").strip() else None
 PUBLIC_BOT_MODE: bool = os.getenv("PUBLIC_BOT_MODE", "true").strip().lower() in {"1", "true", "yes"}
 HOUSEOFASHER_INVITE_URL: str = "https://discord.gg/M9hnebRwvk"
@@ -168,6 +169,8 @@ def validate() -> list[str]:
     problems = []
     if not TOKEN:
         problems.append("DISCORD_TOKEN is not set.")
+    if len(set([TOKEN, *VOICE_BOT_TOKENS])) != len([TOKEN, *VOICE_BOT_TOKENS]):
+        problems.append("Use distinct bot accounts/tokens for VOICE_BOT_TOKENS; do not repeat DISCORD_TOKEN.")
     if not GEMINI_API_KEY:
         problems.append("GEMINI_API_KEY is not set (Gemini is required for readings).")
     if GEMINI_WEB_SEARCH not in {"auto", "on", "off"}:

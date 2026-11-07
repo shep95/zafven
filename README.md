@@ -409,9 +409,49 @@ Personal playlists:
 server default playlist. Music controls and shared-default editing have no DJ or
 server-owner gate. Discord's own application-command permissions still apply.
 
-Discord allows one voice connection per bot account per server. Zafven can be in
-voice in multiple servers at the same time, but one bot account cannot sit in two
-voice channels inside the same server simultaneously.
+Zafven supports simultaneous voice/music sessions in different servers. For
+several channels **inside the same server**, configure a pool of dedicated helper
+bot accounts. Discord permits one voice connection per account per server;
+additional accounts provide additional simultaneous rooms.
+Install the updated requirements (`discord.py[voice]>=2.7.1,<3`) so playback has
+the current DAVE encryption support and its `davey` voice dependency.
+
+1. Create a separate Discord application/bot for each helper. Use dedicated bot
+   accounts, never personal-account tokens or copies of the primary token.
+2. Add their tokens to the deployment's secret variables as a comma-separated
+   `VOICE_BOT_TOKENS=first-helper-token,second-helper-token`. Leave it empty to
+   keep the existing single-account setup. Never commit real tokens.
+3. Restart the bot. Run `/voicebots` on the primary Zafven application to get
+   each logged-in helper's invite link. Invite each helper to the servers that
+   need additional rooms, granting Connect/Speak in those rooms and normal chat
+   permissions where music announcements should appear. Helpers require Guilds
+   and Voice States events, not privileged Message Content or Members intents.
+   If other people should be able to install helpers, enable Public Bot and Guild
+   Install in each helper application's Discord developer settings too.
+4. Keep using **the primary Zafven application's** `/vc join`, `/say`, `/play`,
+   playlists, and playback controls. Join the voice channel you want to control.
+   Zafven reuses that room's account or assigns an available account automatically.
+
+The primary account plus two helpers can serve three rooms in each server, and
+those same accounts can also serve rooms in other servers concurrently. All
+accounts must be invited to a server to contribute capacity there. Busy sessions
+are never moved to make room for another request; `/voicebots` reports capacity.
+When several sessions are active, users outside voice must join a room before
+controlling one. Stage channels and microphone transcription are not added by
+this pool; the existing music playback and typed-chat-to-TTS flows are supported.
+
+Queues, playback locks, volume, looping, frequency, speech toggles, and 24/7
+connections are independent for each account/server session. Playlists and
+pending listen-together requests are shared with the primary account. 24/7 and
+frequency settings persist under separate helper-account namespaces; the
+primary account retains its existing saved settings. A helper reserved for a
+24/7 room remains occupied during reconnection. Chat replies are spoken only in
+the sender's connected room, never broadcast to every active room.
+
+Helpers load only voice and music cogs. They share the primary model gateway and
+do not run duplicate chat, message backups, promotions, member learning, or slash
+command synchronization. A failed helper login leaves other accounts available;
+`/voicebots` shows helpers that are offline or missing from the current server.
 
 Mobile audio compatibility is improved by forcing a clean 48 kHz stereo output and
 limiting peaks before Discord encodes the audio:
