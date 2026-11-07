@@ -16,6 +16,7 @@ from discord.ext import commands
 
 import config
 from core.model_gateway import ModelGateway
+from core.command_sync import CommandSync
 from core.voice_pool import VoicePool
 from core.voice_workers import VoiceWorker
 
@@ -96,6 +97,7 @@ class Zafven(commands.Bot):
         super().__init__(command_prefix="!", intents=build_intents(), help_command=None)
         self.gateway = ModelGateway()
         self.voice_pool = VoicePool(self)
+        self.command_sync = CommandSync(self, config.GUILD_ID)
 
     async def setup_hook(self) -> None:
         _load_opus()
@@ -106,23 +108,30 @@ class Zafven(commands.Bot):
                 await self.load_extension(ext)
                 log.info("Loaded %s", ext)
             except Exception:  # noqa: BLE001
-                log.exception("Failed to load %s", ext)
+                log.exception("Failed to load %s; command publication aborted", ext)
+                raise
 
-        if config.GUILD_ID:
-            guild = discord.Object(id=config.GUILD_ID)
-            self.tree.copy_global_to(guild=guild)
-            synced = await self.tree.sync(guild=guild)
-            log.info("Synced %d commands to guild %s", len(synced), config.GUILD_ID)
-        else:
-            synced = await self.tree.sync()
-            log.info("Synced %d commands globally (may take up to 1h)", len(synced))
+        await self.command_sync.publish()
 
     async def on_ready(self) -> None:
         log.info("zafven online as %s (id=%s)", self.user, self.user.id if self.user else "?")
-        await self.change_presence(activity=discord.Game(name="/help • /houseofasher"))
+        await self.change_presence(activity=discord.Game(name="/commands • /houseofasher"))
+        await self.command_sync.guilds()
+
+    async def on_guild_join(self, guild):
+        try:
+            await self.command_sync.guild(guild, force=True)
+        except discord.DiscordException as error:
+            log.warning("Command refresh failed for newly joined guild %s (%s)", guild.id, type(error).__name__)
 
     async def on_app_command_error(self, interaction: discord.Interaction,
                                    error: discord.app_commands.AppCommandError) -> None:
+        if isinstance(error, (discord.app_commands.CommandNotFound, discord.app_commands.CommandSignatureMismatch)):
+            await self._respond(interaction, "That command has changed or been retired. Use /commands for the current list, then reopen Discord's command menu.")
+            return
+        if isinstance(error, discord.app_commands.NoPrivateMessage):
+            await self._respond(interaction, "Use that command in a server.")
+            return
         if isinstance(error, discord.app_commands.MissingPermissions):
             await self._respond(interaction, "You don't have permission to use this command.")
             return

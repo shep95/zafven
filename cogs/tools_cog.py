@@ -98,7 +98,11 @@ class ToolsCog(commands.Cog):
 
     @app_commands.command(name="tldr", description="Summarize recent messages in this channel.")
     @app_commands.describe(count="How many recent messages to summarize (10-200). Default 50.")
+    @app_commands.guild_only()
     async def tldr(self, interaction: discord.Interaction, count: int = 50) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message("Use /tldr in a server channel.", ephemeral=True)
+            return
         await interaction.response.defer(thinking=True)
         count = max(10, min(count, 200))
         if not interaction.channel.permissions_for(interaction.guild.me).read_message_history:

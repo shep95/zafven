@@ -74,7 +74,11 @@ class KnowledgeCog(commands.Cog):
 
     @app_commands.command(name="learn", description="Build a knowledge report (from a topic or a YouTube link).")
     @app_commands.describe(source="A topic (e.g. 'gardening basics') or a YouTube link.")
+    @app_commands.guild_only()
     async def learn(self, interaction: discord.Interaction, source: str) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message("Use /learn in a server so I can post the report to #knowledge.", ephemeral=True)
+            return
         await interaction.response.defer(thinking=True)
         vid = youtube.extract_video_id(source)
 

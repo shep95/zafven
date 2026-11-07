@@ -15,7 +15,7 @@ the actual application publicly installable:
 
 1. In the application's Discord Developer Portal settings, enable **Public Bot**.
 2. Enable server/Guild Install and the `bot` and `applications.commands` scopes.
-3. Keep `GUILD_ID` blank so commands register globally; configure the required
+3. Commands register globally. Leave `GUILD_ID` blank for normal public use; configure the required
    token, Gemini key, intents, persistent storage, and deployment as described below.
 4. Once running, `/invitebot` produces the application's public authorization URL.
    The installing user still needs permission to add applications to the target server.
@@ -551,3 +551,32 @@ or `MUSIC_COOKIES`.
 - Manage Server: required for persona/brain management and bulk welcome DMs.
 - Manage Roles: required for XP rank roles.
 - View Audit Log: used to estimate who deleted a message.
+
+
+### Current slash commands and registration refresh
+
+`/commands [page]` and `/help [page]` show the installed command tree, including
+options, nested commands, new features, and the "Quote this message" Apps action.
+Use Next/Previous or a page number. The list is generated from loaded commands,
+so removed features disappear without maintaining a second handwritten list.
+Server-only commands are omitted when browsing from DMs.
+
+Startup publishes the complete global command set using Discord's bulk overwrite
+API, replacing outdated definitions and retiring removed commands without a
+separate delete/recreate cycle. Startup stops before publishing if any feature
+extension fails to load, preserving the previously published menu for diagnosis.
+After connecting, Zafven checks each joined server for old server-specific copies
+that can shadow global updates, and removes those copies. New server installs are
+checked too. An optional `GUILD_ID` now adds an immediate server mirror **alongside**
+global publication; it no longer leaves the global menu outdated. Clear `GUILD_ID`
+for the usual public-bot setup.
+
+The bot/application owner can run `/synccommands` to republish the current global
+menu and force another check of server command copies without restarting. Its
+reply reports server refresh failures rather than claiming every server updated.
+Server administrators who do not own the application cannot change its global
+menu. Other applications' commands and helper-account registrations are untouched.
+Discord clients may need their command menu reopened after an update.
+
+These changes take effect after deploying/restarting the updated bot with its
+Discord token. An offline test cannot update a live server's command registry.

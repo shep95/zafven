@@ -21,7 +21,7 @@ class PublicBotCog(commands.Cog):
             return
         try:
             await channel.send(
-                "Zafven is ready. Use /help and /privacy for features and data handling. "
+                "Zafven is ready. Use /commands and /privacy for features and data handling. "
                 "Public promotions are off until /promotion_setup approves a channel. "
                 "Bot-owner role delegation is off until /owner_role_access approves individual roles. "
                 "This server controls permissions and can remove the bot.",
@@ -51,7 +51,8 @@ class PublicBotCog(commands.Cog):
         app = await self.bot.application_info()
         await interaction.followup.send(
             f"Public Bot enabled on Discord: {app.bot_public}. "
-            f"Global commands configured: {config.GUILD_ID is None}. "
+            "Global commands configured: True. "
+            f"Optional immediate server mirror configured: {config.GUILD_ID is not None}. "
             "Servers control granted permissions and can remove the bot. "
             "Use /invitebot for the install URL.", ephemeral=True)
 
