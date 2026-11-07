@@ -51,6 +51,10 @@ class HelpCog(commands.Cog):
                    "`/teach <topic> <fact>`, `/taught`, and `/unlearn` manage learned server facts.\n"
                    "Admins can tune style with `/persona set` and add custom knowledge with `/brain add`."),
             inline=False)
+        embed.add_field(name="Asher-inspired methods", value=(
+            "`/asher_learn` - enable learning from Asher's public messages\n"
+            "`/asher_status` / `/asher_correct` / `/asher_pause` / `/asher_reset`\n"
+            "Managed by Asher or the bot owner. Learns provisional methods, not private thoughts."), inline=False)
         embed.add_field(
             name="Voice",
             value=("`/vc join` - bring her into your voice channel; she can speak replies aloud.\n"

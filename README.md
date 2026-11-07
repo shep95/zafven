@@ -93,6 +93,69 @@ References: [Discord installation/OAuth](https://github.com/discord/discord-api-
   small number of readable channels and passes attributed snippets into the prompt.
   If she uses those snippets, she is instructed to quote the channel and sender.
 
+### Asher-inspired reasoning patterns
+
+The configured source account is `909200076637872188` (`ASHER_USER_ID`). Zafven can
+derive reusable reasoning and communication methods from that account's approved
+public messages. This is structured prompt memory, not model-weight training,
+mind reading, impersonation, or a claim to reproduce Asher's complete worldview.
+No real source messages were available or analyzed during development.
+
+Only Asher's exact account or the bot application's owner can manage this learner:
+
+1. Run `/asher_learn` in a server whose public channels are approved for this purpose.
+   It explicitly enables collection there, scans accessible public text channels
+   and active public threads, and starts a background analysis. Accepted methods
+   can guide Zafven across servers, as disclosed by the command.
+2. `/asher_status` privately shows source/scan state and a JSON profile with observations,
+   reusable methods, suitable uses, limits, supporting message IDs, and counterevidence IDs.
+3. `/asher_correct topic:<method> correction:<feedback>` adds a durable explicit
+   correction used in replies and future analyses, without rewriting the source evidence.
+4. `/asher_pause` stops collecting from this server while retaining existing methods.
+5. `/asher_reset` removes the global learned profiles, dedicated samples, and corrections,
+   and disables source collection. General message archives remain separate.
+
+Collection is off until `/asher_learn` authorizes a source server. The bot takes only
+the exact author's nonempty text, excluding DMs, private channels/threads, per-user
+memory, backups, internal data, deletion/mod alerts, and member logs. The source
+channel must be visible with readable history to `@everyone` and the bot. Other
+members' messages and the bot's own responses cannot become author samples.
+
+Defaults: inspect at most 500 messages per eligible channel, keep up to the latest
+200 selected samples per analysis (configurable up to 300), clip individual input
+samples to 1,200 characters, and cap analysis text at 75,000 characters. At least
+20 distinct message texts are required. These are bounded samples, not exhaustive
+coverage of the author's history. Identical reposts do not count as distinct examples.
+
+The model is instructed to infer observable problem framing, analogical connections,
+creative alternatives, practical/social judgment, explanation and correction methods,
+and explicitly stated worldview lenses. It must not diagnose, rank intelligence,
+infer concealed motives, or treat personal beliefs as established facts. Each accepted
+pattern needs two distinct supplied message IDs. Invalid/unsupported output does not
+replace an existing profile. ID/schema validation checks structure and provenance,
+not whether the model's interpretation is semantically correct. Results stay labeled
+provisional, with contexts where each method should not be applied.
+
+Once enabled, future qualifying messages are recorded and eligible sources refresh
+every 12 hours. The extraction bypasses the learned profile itself to avoid treating
+Zafven's previous interpretations as evidence. Unchanged samples/corrections skip a
+new model call. Cached/known edited messages refresh; removing a cited source message
+invalidates the active profile until a new analysis can be supported. Visibility is
+checked again before analysis. Older or inaccessible edits may not be observed.
+
+The model gateway adds only the generalized methods and explicit corrections to
+ordinary replies. Raw source messages and evidence IDs are not automatically copied
+into other users' prompts. Zafven is instructed to adapt useful methods to each
+person's needs and values, preserve simple answers, and label new extensions as its
+own suggestions rather than claiming Asher said or endorsed them. Learned reference
+data cannot grant permissions, override core instructions, or expose private memory.
+Model behavior and the absence of every possible identifying detail are not guaranteed
+by the structural checks; the authorized controls allow inspection and correction.
+
+To use this on the real server, deploy with the Discord token/Gemini key, give the
+bot the relevant public history access, and run `/asher_learn` as Asher or the bot
+owner. No scan starts automatically merely because the account ID is configured.
+
 ### Natural replies, image chat, and quote cards
 
 The personality now favors creative, practical, socially aware answers over jargon
@@ -411,6 +474,7 @@ python scripts/community_test.py
 python scripts/personality_memory_test.py
 python scripts/public_bot_test.py
 python scripts/image_quote_test.py
+python scripts/asher_patterns_test.py
 ```
 
 ## Setup

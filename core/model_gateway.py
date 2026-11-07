@@ -56,10 +56,18 @@ class ModelGateway:
         model: str | None = None,
         temperature: float | None = None,
         uncensored: bool = True,
+        use_learned_patterns: bool = True,
     ) -> str:
         """Generate text. `web_search=None` defers to the configured default."""
         if self._session is None or self._session.closed:
             await self.start()
+
+        if use_learned_patterns:
+            try:
+                from core.asher_patterns import repository
+                system_prompt += await repository.active_prompt()
+            except Exception:
+                log.exception("Learned-method context unavailable; using the base personality")
 
         if config.UNCENSORED_MODE and uncensored:
             system_prompt = apply_uncensored(system_prompt)

@@ -41,6 +41,7 @@ INITIAL_COGS = [
     "cogs.music_cog",
     "cogs.culture_cog",
     "cogs.brain_cog",
+    "cogs.asher_patterns_cog",
     "cogs.teach_cog",
     "cogs.persona_cog",
     "cogs.logging_cog",

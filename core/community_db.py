@@ -41,6 +41,17 @@ class CommunityDB:
                     guild_id TEXT PRIMARY KEY, payload TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS promotion_consent (
                     user_id TEXT PRIMARY KEY, allowed INTEGER NOT NULL DEFAULT 0);
+                CREATE TABLE IF NOT EXISTS asher_sources (
+                    guild_id TEXT PRIMARY KEY, enabled INTEGER NOT NULL DEFAULT 1,
+                    approved_by TEXT NOT NULL, last_error TEXT NOT NULL DEFAULT '');
+                CREATE TABLE IF NOT EXISTS asher_samples (
+                    message_id TEXT PRIMARY KEY, guild_id TEXT NOT NULL, channel_id TEXT NOT NULL,
+                    author_id TEXT NOT NULL, content TEXT NOT NULL, created_at TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS asher_profiles (
+                    id INTEGER PRIMARY KEY, source_user_id TEXT NOT NULL, payload TEXT NOT NULL,
+                    created_at TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1);
+                CREATE TABLE IF NOT EXISTS asher_corrections (
+                    topic TEXT PRIMARY KEY, note TEXT NOT NULL, supplied_by TEXT NOT NULL);
             """)
             return operation(conn)
 
