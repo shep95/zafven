@@ -56,6 +56,7 @@ INITIAL_COGS = [
     "cogs.invites_cog",
     "cogs.safety_cog",
     "cogs.listen_cog",
+    "cogs.quote_cog",
     "cogs.intelligence_cog",
     "cogs.help_cog",
 ]

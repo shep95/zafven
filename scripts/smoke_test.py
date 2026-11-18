@@ -493,5 +493,19 @@ class ListenPlatformTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(e.correction_reason, "clock drift")
 
 
+class QuoteImageTests(unittest.TestCase):
+    def test_render_quote_produces_png(self) -> None:
+        from core import quoteimg
+        png = quoteimg.render_quote(None, "a short quote", "asher", "@asher_newton")
+        self.assertTrue(png.startswith(b"\x89PNG"))
+        self.assertGreater(len(png), 1000)
+
+    def test_render_quote_wraps_long_text(self) -> None:
+        from core import quoteimg
+        long = " ".join(["word"] * 60)
+        png = quoteimg.render_quote(None, long, "x", "@x")
+        self.assertTrue(png.startswith(b"\x89PNG"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
