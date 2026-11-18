@@ -45,25 +45,14 @@ def _cookie_path() -> str:
 FFMPEG_BEFORE_OPTIONS = "-nostdin -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
 
 
-def ffmpeg_options(tremolo_hz: int | None = None) -> str:
-    """Build Discord-safe FFmpeg output options. `tremolo_hz` overrides the config
-    default (0 = effect off); None means use config.MUSIC_TREMOLO_HZ."""
+def ffmpeg_options() -> str:
+    """Build Discord-safe FFmpeg output options."""
     # aresample=async keeps the audio clock steady so streamed sources don't drift
     # into the buzzing / cutting-in-and-out you hear on weaker (mobile) connections.
     # It goes first so later effect filters run on already-resynced audio.
     filters = ["aresample=async=1:min_hard_comp=0.100000:first_pts=0"]
     if config.MUSIC_AUDIO_FILTER:
         filters.append(config.MUSIC_AUDIO_FILTER)
-    if tremolo_hz is None:
-        tremolo_hz = int(getattr(config, "MUSIC_TREMOLO_HZ", 0) or 0)
-    tremolo = max(0, int(tremolo_hz))
-    if tremolo:
-        # A tremolo is an amplitude pulse. The RATE (Hz) sets the vibe; the DEPTH
-        # sets how strong the wobble is — keep depth low so it's a subtle breath,
-        # not the harsh buzzing a high depth produces. Clamp both to safe ranges.
-        hz = max(1, min(tremolo, 16))
-        depth = max(0.01, min(float(getattr(config, "MUSIC_TREMOLO_DEPTH", 0.08) or 0.08), 0.9))
-        filters.append(f"tremolo=f={hz}:d={depth:.3f}")
     return " ".join(["-vn", "-ac 2", "-ar 48000", f"-af {','.join(filters)}"])
 
 
