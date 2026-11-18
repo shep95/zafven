@@ -19,7 +19,6 @@ from cogs.chat_cog import PSYCH_REQUEST_RE, ChatCog
 
 class PsychSmokeTests(unittest.TestCase):
     def test_config_uncensored_defaults(self) -> None:
-        self.assertEqual(config.GEMINI_SAFETY, "BLOCK_NONE")
         self.assertTrue(config.UNCENSORED_MODE)
         self.assertFalse(config.NSFW_SCAN_ENABLED)
         # The bot's own replies stay uncensored; the profanity filter moderates

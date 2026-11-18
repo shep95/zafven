@@ -31,25 +31,20 @@ DEFAULT_INACTIVE_DAYS: int = _int("DEFAULT_INACTIVE_DAYS", 30)
 ACTIVITY_SCAN_LIMIT: int = _int("ACTIVITY_SCAN_LIMIT", 2000)
 JOIN_GRACE_DAYS: int = _int("JOIN_GRACE_DAYS", 7)
 
-# ── Gemini LLM (required) ────────────────────────────────────────────────
-GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "").strip()
-GEMINI_BASE_URL: str = os.getenv(
-    "GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta").strip().rstrip("/")
-# Gemini models are multimodal, so one model handles both text and vision.
-GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
-# Live chat uses its own (optionally faster) model so banter stays snappy while
-# readings/research can use a heavier model. Defaults to the main model.
-CHAT_MODEL: str = os.getenv("CHAT_MODEL", "").strip() or GEMINI_MODEL
-GEMINI_MAX_TOKENS: int = _int("GEMINI_MAX_TOKENS", 1200)
-GEMINI_TIMEOUT: int = _int("GEMINI_TIMEOUT", 45)
-# 2.5 models "think" before answering, which can eat the output budget and cut
-# replies off mid-sentence. 0 disables thinking; -1 = dynamic; >0 = fixed budget.
-GEMINI_THINKING_BUDGET: int = _int("GEMINI_THINKING_BUDGET", 0)
-GEMINI_WEB_SEARCH: str = os.getenv("GEMINI_WEB_SEARCH", "auto").strip().lower()
-# How aggressively Gemini's own filter blocks output. BLOCK_NONE = loosest Gemini
-# allows. "OFF"/"NONE" -> BLOCK_NONE.
-_safety = os.getenv("GEMINI_SAFETY", "BLOCK_NONE").strip().upper()
-GEMINI_SAFETY: str = "BLOCK_NONE" if _safety in {"OFF", "NONE", ""} else _safety
+# ── Mistral LLM (required) ───────────────────────────────────────────────
+# Zafven's brain runs on Mistral (https://console.mistral.ai). OpenAI-compatible
+# chat/completions API. Note: Mistral has no text-to-speech, so spoken-voice
+# features are off until a dedicated TTS provider is wired in (see voice_cog).
+MISTRAL_API_KEY: str = os.getenv("MISTRAL_API_KEY", "").strip()
+MISTRAL_BASE_URL: str = os.getenv("MISTRAL_BASE_URL", "https://api.mistral.ai/v1").strip().rstrip("/")
+# Main (heavier) model for readings/research/synthesis.
+MISTRAL_MODEL: str = os.getenv("MISTRAL_MODEL", "mistral-large-latest").strip()
+# Vision-capable model used automatically when an image is supplied (Pixtral family).
+MISTRAL_VISION_MODEL: str = os.getenv("MISTRAL_VISION_MODEL", "pixtral-large-latest").strip()
+# Live chat uses its own (optionally lighter/faster) model for snappy banter.
+CHAT_MODEL: str = os.getenv("CHAT_MODEL", "").strip() or os.getenv("MISTRAL_CHAT_MODEL", "mistral-small-latest").strip()
+MISTRAL_MAX_TOKENS: int = _int("MISTRAL_MAX_TOKENS", 1200)
+MISTRAL_TIMEOUT: int = _int("MISTRAL_TIMEOUT", 45)
 # Prepend uncensored truth directive to every LLM system prompt (except explicit opt-outs).
 UNCENSORED_MODE: bool = os.getenv("UNCENSORED_MODE", "true").strip().lower() in {"1", "true", "yes"}
 
@@ -178,10 +173,13 @@ CHAT_SOURCE_SNIPPETS: int = _int("CHAT_SOURCE_SNIPPETS", 6)
 SEVEN_SINS_DM_ENABLED: bool = os.getenv("SEVEN_SINS_DM_ENABLED", "false").strip().lower() in {"1", "true", "yes"}
 SEVEN_SINS_COOLDOWN_SECONDS: int = _int("SEVEN_SINS_COOLDOWN_SECONDS", 21600)
 
-# ── Voice (Gemini text-to-speech) ────────────────────────────────────────
-GEMINI_TTS_MODEL: str = os.getenv("GEMINI_TTS_MODEL", "gemini-2.5-flash-preview-tts").strip()
-# Prebuilt Gemini voice (Kore, Puck, Aoede, Leda, Zephyr, Charon, Fenrir, …).
-GEMINI_TTS_VOICE: str = os.getenv("GEMINI_TTS_VOICE", "Kore").strip()
+# ── Voice (text-to-speech) ───────────────────────────────────────────────
+# Mistral has no TTS, so spoken-voice output is disabled until a dedicated TTS
+# provider is configured. These are placeholders for that future integration.
+TTS_ENABLED: bool = os.getenv("TTS_ENABLED", "false").strip().lower() in {"1", "true", "yes"}
+TTS_PROVIDER: str = os.getenv("TTS_PROVIDER", "").strip()
+TTS_API_KEY: str = os.getenv("TTS_API_KEY", "").strip()
+TTS_VOICE: str = os.getenv("TTS_VOICE", "").strip()
 
 # ── YouTube + knowledge reports ──────────────────────────────────────────
 # Optional YouTube Data API v3 key for /youtube search (real video links).
@@ -251,8 +249,6 @@ def validate() -> list[str]:
     problems = []
     if not TOKEN:
         problems.append("DISCORD_TOKEN is not set.")
-    if not GEMINI_API_KEY:
-        problems.append("GEMINI_API_KEY is not set (Gemini is required for readings).")
-    if GEMINI_WEB_SEARCH not in {"auto", "on", "off"}:
-        problems.append("GEMINI_WEB_SEARCH must be one of: auto, on, off.")
+    if not MISTRAL_API_KEY:
+        problems.append("MISTRAL_API_KEY is not set (Mistral powers Zafven's brain).")
     return problems

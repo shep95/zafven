@@ -73,7 +73,7 @@ def assess_coverage(registry: PatternRegistry, query: str, domain: str = "") -> 
 class AdaptivePatternCreator:
     def __init__(self, registry: PatternRegistry, provider) -> None:
         self._reg = registry
-        self._provider = provider  # a GeminiProvider (or None to force heuristics)
+        self._provider = provider  # an LLMProvider (or None to force heuristics)
 
     # ---- feedback → candidate pattern (§12) -------------------------------
     async def from_feedback(

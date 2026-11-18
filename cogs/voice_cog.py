@@ -122,12 +122,20 @@ class VoiceCog(commands.Cog):
         if err:
             await interaction.followup.send(f"❌ {err}", ephemeral=True)
             return
+        if not config.TTS_ENABLED:
+            await interaction.followup.send(
+                "🔇 spoken voice is currently off — the brain runs on Mistral, which has no "
+                "text-to-speech. an operator can enable it by configuring a TTS provider (TTS_* settings).",
+                ephemeral=True)
+            return
         ok = await self._speak_text(interaction.guild, text)
         await interaction.followup.send("🗣️ Said it." if ok else "🔌 Voice engine hiccupped — try again.",
                                         ephemeral=True)
 
     # ── speaking ─────────────────────────────────────────────────────────
     async def maybe_speak(self, guild: discord.Guild, text: str) -> None:
+        if not config.TTS_ENABLED:
+            return  # no TTS provider configured (Mistral has none) — stay silent
         if not self._speak.get(guild.id) or guild.voice_client is None:
             return
         # Keep the channel music-only while a track is playing/queued — don't talk over it.

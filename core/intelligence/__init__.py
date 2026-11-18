@@ -25,7 +25,7 @@ from core.model_gateway import ModelGateway
 from core.intelligence.context import ConversationStore, ResolvedContext
 from core.intelligence.creator import AdaptivePatternCreator, assess_coverage, Coverage
 from core.intelligence.critic import validate_reply
-from core.intelligence.gateway import ProviderGateway, CredentialVault, GeminiProvider
+from core.intelligence.gateway import ProviderGateway, CredentialVault, LLMProvider
 from core.intelligence.globals import GlobalLearning
 from core.intelligence.learning import LearningGate
 from core.intelligence.memory import MemoryVault
@@ -49,7 +49,7 @@ class GuildIntelligence:
     registry: PatternRegistry
     memory: MemoryVault
     credentials: CredentialVault
-    provider: GeminiProvider
+    provider: LLMProvider
     creator: AdaptivePatternCreator
     learning: LearningGate
 

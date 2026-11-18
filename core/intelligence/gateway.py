@@ -50,22 +50,22 @@ class ModelCapabilities:
         return asdict(self)
 
 
-def _gemini_caps(model: str) -> ModelCapabilities:
-    """Best-effort capability profile for a Gemini model id. Conservative defaults;
-    a 2.x/2.5 flash/pro is multimodal with tools + grounding."""
+def _mistral_caps(model: str) -> ModelCapabilities:
+    """Best-effort capability profile for a Mistral model id."""
     m = (model or "").lower()
-    is_pro = "pro" in m
+    is_large = "large" in m
+    is_vision = "pixtral" in m
     return ModelCapabilities(
-        provider="gemini",
+        provider="mistral",
         model=model,
-        vision=True,
-        image_gen=False,           # this endpoint does text/vision in, not image out
+        vision=is_vision,
+        image_gen=False,
         audio_in=False,
-        audio_out=True,            # via the tts() path
+        audio_out=False,           # Mistral has no TTS
         tool_calling=True,
         structured_output=True,
-        context_window=1_000_000 if ("1.5" in m or "2." in m) else 128_000,
-        coding_suitability="high" if is_pro else "moderate",
+        context_window=128_000,
+        coding_suitability="high" if is_large else "moderate",
     )
 
 
@@ -82,8 +82,8 @@ class Provider:
         raise NotImplementedError
 
 
-class GeminiProvider(Provider):
-    """Gemini via ModelGateway. Used both for the built-in (zafven) key and for a
+class LLMProvider(Provider):
+    """LLM provider via ModelGateway. Used both for the built-in (zafven) key and for a
     user-supplied key — the only difference is which credential the gateway holds."""
 
     def __init__(self, gateway: ModelGateway, *, name: str, model: str) -> None:
@@ -98,7 +98,7 @@ class GeminiProvider(Provider):
         await self._gw.close()
 
     def capabilities(self, model: str | None = None) -> ModelCapabilities:
-        caps = _gemini_caps(model or self._model)
+        caps = _mistral_caps(model or self._model)
         caps.provider = self.name
         return caps
 
@@ -131,7 +131,7 @@ class CredentialVault:
         # light obfuscation at rest — NOT encryption; documented as such.
         blob = base64.b64encode(key.strip().encode("utf-8")).decode("ascii")
         await self._store.set(_NS_CREDS, {  # type: ignore[attr-defined]
-            "provider": (provider or "gemini").strip().lower(),
+            "provider": (provider or "mistral").strip().lower(),
             "model": model.strip(),
             "key_b64": blob,
         })
@@ -174,7 +174,7 @@ class CredentialVault:
             key = base64.b64decode(blob).decode("utf-8")
         except Exception:  # noqa: BLE001
             return None
-        return raw.get("provider", "gemini"), raw.get("model", ""), key
+        return raw.get("provider", "mistral"), raw.get("model", ""), key
 
 
 class ProviderGateway:
@@ -185,13 +185,13 @@ class ProviderGateway:
     on that credential instead — with the intelligence layer unchanged (§20)."""
 
     def __init__(self, builtin: ModelGateway) -> None:
-        self._builtin = GeminiProvider(builtin, name="zafven-builtin", model=config.GEMINI_MODEL)
-        self._user_providers: dict[int, GeminiProvider] = {}
+        self._builtin = LLMProvider(builtin, name="zafven-builtin", model=config.MISTRAL_MODEL)
+        self._user_providers: dict[int, LLMProvider] = {}
 
-    def builtin(self) -> GeminiProvider:
+    def builtin(self) -> LLMProvider:
         return self._builtin
 
-    async def provider_for(self, guild_id: int, vault: CredentialVault | None) -> GeminiProvider:
+    async def provider_for(self, guild_id: int, vault: CredentialVault | None) -> LLMProvider:
         """Pick the provider for this guild: the user credential if enabled+present,
         else the built-in. A broken user credential falls back to built-in."""
         if not getattr(config, "PROVIDER_USER_KEYS_ENABLED", False) or vault is None:
@@ -204,12 +204,12 @@ class ProviderGateway:
         if cached is not None:
             return cached
         try:
-            gw = ModelGateway(api_key=key, model=model or config.GEMINI_MODEL)
+            gw = ModelGateway(api_key=key, model=model or config.MISTRAL_MODEL)
             await gw.start()
         except Exception as exc:  # noqa: BLE001 — never leak the key in the error
             log.warning("user provider for guild %s failed to start; using built-in", guild_id)
             return self._builtin
-        prov = GeminiProvider(gw, name=f"guild-{guild_id}-key", model=model or config.GEMINI_MODEL)
+        prov = LLMProvider(gw, name=f"guild-{guild_id}-key", model=model or config.MISTRAL_MODEL)
         self._user_providers[guild_id] = prov
         return prov
 
@@ -225,6 +225,6 @@ class ProviderGateway:
 
 
 __all__ = [
-    "ModelCapabilities", "Provider", "GeminiProvider",
+    "ModelCapabilities", "Provider", "LLMProvider",
     "CredentialVault", "ProviderGateway", "GatewayError",
 ]
