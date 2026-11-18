@@ -507,5 +507,32 @@ class QuoteImageTests(unittest.TestCase):
         self.assertTrue(png.startswith(b"\x89PNG"))
 
 
+class OwnerProtectTests(unittest.IsolatedAsyncioTestCase):
+    def test_is_owner_matches_config(self) -> None:
+        from core import owner
+        import config
+        self.assertTrue(owner.is_owner(config.OWNER_ID))
+        self.assertFalse(owner.is_owner(config.OWNER_ID + 1))
+
+    def test_owner_always_protected(self) -> None:
+        from core import owner
+        import config
+        self.assertTrue(owner.is_protected(config.OWNER_ID))
+
+    async def test_protect_list_add_remove_and_persist(self) -> None:
+        from core import owner
+        store = _FakeStore()
+        self.assertFalse(owner.is_protected(4242))
+        self.assertTrue(await owner.add_protected(store, 4242))
+        self.assertTrue(owner.is_protected(4242))
+        self.assertIn(4242, store.get("owner_protect", {})["ids"])
+        # reload from store into a cleared cache
+        owner._protected.clear()
+        await owner.load(store)
+        self.assertTrue(owner.is_protected(4242))
+        self.assertTrue(await owner.remove_protected(store, 4242))
+        self.assertFalse(owner.is_protected(4242))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

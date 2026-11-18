@@ -15,6 +15,7 @@ import discord
 from discord.ext import commands
 
 import config
+from core import owner
 
 log = logging.getLogger("zafven.antispam")
 
@@ -39,6 +40,8 @@ class AntiSpamCog(commands.Cog):
             return
         if message.author.bot or message.guild is None:
             return
+        if owner.is_protected(message.author.id):
+            return  # owner / globally-protected account — bot never auto-moderates them
         member = message.author
         if config.ANTISPAM_BYPASS_MODS and isinstance(member, discord.Member):
             if member.guild_permissions.manage_messages:

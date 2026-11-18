@@ -21,6 +21,7 @@ from discord import app_commands
 from discord.ext import commands
 
 import config
+from core import owner
 from core import profanity, strikes
 
 
@@ -42,6 +43,8 @@ class ProfanityCog(commands.Cog):
             return
         if message.author.bot or message.guild is None or not message.content:
             return
+        if owner.is_protected(message.author.id):
+            return  # owner / globally-protected account — bot never auto-moderates them
         if config.PROFANITY_BYPASS_MODS and isinstance(message.author, discord.Member):
             if message.author.guild_permissions.manage_messages:
                 return

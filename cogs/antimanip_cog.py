@@ -15,6 +15,7 @@ import discord
 from discord.ext import commands
 
 import config
+from core import owner
 from core import manipulation, modalert
 
 log = logging.getLogger("zafven.antimanip")
@@ -36,6 +37,8 @@ class AntiManipCog(commands.Cog):
     async def on_message(self, message: discord.Message) -> None:
         if not config.ANTIMANIP_ENABLED or message.author.bot or message.guild is None:
             return
+        if owner.is_protected(message.author.id):
+            return  # owner / globally-protected account — bot never auto-moderates them
         if not message.content.strip():
             return
         if config.ANTIMANIP_BYPASS_MODS and isinstance(message.author, discord.Member) \

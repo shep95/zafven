@@ -15,6 +15,7 @@ import discord
 from discord.ext import commands
 
 import config
+from core import owner
 from core import harassment
 
 log = logging.getLogger("zafven.antiharass")
@@ -32,6 +33,8 @@ class AntiHarassCog(commands.Cog):
             return
         if message.author.bot or message.guild is None or not message.content:
             return
+        if owner.is_protected(message.author.id):
+            return  # owner / globally-protected account — bot never auto-moderates them
         member = message.author
         if config.HARASS_BYPASS_MODS and isinstance(member, discord.Member) \
                 and member.guild_permissions.manage_messages:

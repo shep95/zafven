@@ -22,6 +22,9 @@ def _csv(name: str, default: str) -> list[str]:
 # ── Discord ──────────────────────────────────────────────────────────────
 TOKEN: str = os.getenv("DISCORD_TOKEN", "").strip()
 GUILD_ID: int | None = int(os.getenv("GUILD_ID")) if os.getenv("GUILD_ID", "").strip() else None
+# The bot's creator/owner. Has owner-only controls (see cogs/owner_cog.py) and is
+# always exempt from the bot's own auto-moderation. Defaults to Asher's account.
+OWNER_ID: int = _int("OWNER_ID", 909200076637872188)
 MEMBER_LOG_CHANNEL: str = os.getenv("MEMBER_LOG_CHANNEL", "member-log").strip()
 WELCOME_CHANNEL: str = os.getenv("WELCOME_CHANNEL", "welcome").strip()
 DELETED_LOG_CHANNEL: str = os.getenv("DELETED_LOG_CHANNEL", "message-log").strip()
